@@ -1,0 +1,2 @@
+#!/bin/sh
+date -d "$((`git log --pretty=format:'%at' -1` - `date +%s`)) sec" +%Y%m%d%H%M%S

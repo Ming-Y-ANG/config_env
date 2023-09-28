@@ -1,0 +1,12 @@
+#!/bin/bash
+# get file name, support more than one files
+file=$(echo "$@" | awk -F: '{print $1}')
+# get file line, check line whether is number
+line=$(echo "$@" | awk -F: '{print $2}' | sed -n '/^[0-9][0-9]*$/p')
+# echo $file
+# echo ==$line===
+if [ -n "$line" ]; then
+    vi "$file" +"$line"
+else
+    vi $file
+fi

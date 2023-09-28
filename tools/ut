@@ -1,0 +1,21 @@
+#!/bin/sh
+
+#remove option
+if [ "$1" = "-r" ]; then
+    echo "Remove gtags.files ..."
+    rm -rf GPATH GRTAGS GTAGS gtags.files
+    exit
+fi
+
+#default generate
+FILES_NAME="gtags.files"
+FILE_PATTERN='"*.[ch]" "*.cpp" "*.cxx" "*.cc"'
+
+rm -rf $FILES_NAME
+for pattern in $FILE_PATTERN
+do
+    echo "Collect files for pattern $pattern ..."
+    eval "find -name $pattern" >> $FILES_NAME
+done
+
+gtags

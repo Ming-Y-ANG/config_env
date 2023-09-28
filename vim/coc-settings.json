@@ -1,0 +1,59 @@
+{
+	"coc.preferences.colorSupport": true,
+	"coc.source.emoji.priority": 90,
+	"coc.source.word.priority": 80,
+	"coc.source.syntax.priority": 70,
+	"coc.source.around.priority": 60,
+	"coc.preferences.enableFloatHighlight": true,
+	"coc.preferences.snippetStatusText": "Ⓢ ",
+	"coc.preferences.extensionUpdateCheck": "daily",
+	"coc.preferences.messageLevel": "error",
+	"coc.source.around.firstMatch": false,
+	"coc.source.buffer.firstMatch": false,
+	"suggest.detailMaxLength": 60,
+	"suggest.noselect": true,
+	"suggest.enablePreselect": false,
+	"suggest.triggerAfterInsertEnter": true,
+	"suggest.autoTrigger": "always",
+	"suggest.timeout": 500,
+	"suggest.enablePreview": true,
+	"suggest.floatEnable": true,
+	"suggest.detailField": "preview",
+	"suggest.snippetIndicator": "",
+	"suggest.triggerCompletionWait": 100,
+	"suggest.echodocSupport": true,
+	"codeLens.enable": false,
+	"list.previewHighlightGroup": "Statement",
+	"languageserver": {
+		"bash": {
+			"command": "bash-language-server",
+			"args": [
+				"start"
+			],
+			"filetypes": [
+				"sh"
+			],
+			"ignoredRootPaths": []
+		},
+		"ccls": {
+			"command": "ccls",
+			"filetypes": [
+				"c",
+				"cpp",
+				"cuda",
+				"objc",
+				"objcpp"
+			],
+			"rootPatterns": [
+				".ccls",
+				".ccls-root",
+				"compile_commands.json"
+			],
+			"initializationOptions": {
+				"cache": {
+					"directory": "/tmp/ccls"
+				}
+			}
+		}
+	}
+}
