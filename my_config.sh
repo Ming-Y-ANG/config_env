@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euxo pipefail
+set -exo pipefail
 
 USER=$(whoami)
 DEF_PASSWD=1
@@ -13,39 +13,49 @@ sudo_wrapper(){
 }
 
 program_exists() {
-    local ret='0'
-    command -v $1 >/dev/null 2>&1 || { local ret='1'; }
+	command -v $1 >/dev/null 2>&1; 
+}
 
-    # fail on non-zero return value
-    return $ret
+version_lt() {
+	test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" != "$1";
+}
 
+version_gt() {
+	test "$(echo "$@" | tr " " "\n" | sort -V | head -n 1)" != "$1"; 
+}
+
+version_le() {
+	test "$(echo "$@" | tr " " "\n" | sort -V | head -n 1)" == "$1"; 
+}
+
+version_ge() {
+	test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" == "$1"; 
 }
 
 npm_update() {
-	local verson='9.5.1'
-	ver[0]=$version
-	ver[1]=$(npm -v)
+	local REQ_VER='9.5.1'
+	local CUR_VER=$(npm -v)
 
-	new=$(echo ${ver[*]} | tr ' ' '\n' | sort -n)
-	a=0
-	for i in $new
-	do
-	   arr[$a]=$i
-	   let a++
-	done
-	if [ ${arr[0]} != $version ]; then
-	   sudo_wrapper npm install -g npm@$version
+	if version_lt $CUR_VER $REQ_VER; then 
+       echo "===== $CUR_VER is less than $REQ_VER ====="
+	   sudo_wrapper npm install -g npm@$REQ_VER
 	fi
 }
 
 install_nodejs(){
-	(program_exists node) || { 
-		echo "nodejs not exit, download it now!"
-		VERSION=v16.17.0
+	local VERSION=v16.18.0
+	local update=0
+	if !(program_exists node) then
+		update=1
+	elif version_lt $(node -v) $VERSION; then
+		update=1
+	fi
+
+	if [ $update -eq '1' ]; then
+		echo "nodejs not exit or too old, upgrade it now!"
 		PACK=node-$VERSION-linux-x64.tar.gz
 		URL="https://nodejs.org/dist/$VERSION/$PACK"
 		PREFIX=/usr/local
-		rm -rf $PACK
 		wget "${URL}" 
 		tar xzfv $PACK\
 			--exclude CHANGELOG.md \
@@ -53,13 +63,14 @@ install_nodejs(){
 			--exclude README.md \
 			--strip-components 1 \
 			-C "${PREFIX}"
-	}
+		rm -rf $PACK
+	fi
 }
-
 
 install_utilities(){
 
 	local distro_support=$1
+	local update=0
 
 	[ -z "$distro_support" ] && {
 		echo "use 'install_utilities DISTRO_SUPPORT'"
@@ -75,30 +86,45 @@ install_utilities(){
 	tar -cvf - tools | tar -xvf - -C $HOME
 
 	sudo_wrapper apt update
-	sudo_wrapper apt install build-essential software-properties-common -y --no-install-recommends
-	sudo_wrapper apt install wget curl git tig global expect bear autoconf -y --no-install-recommends
-	
+	sudo_wrapper apt install build-essential software-properties-common unzip -y --no-install-recommends
+	sudo_wrapper apt install wget curl git tig expect bear autoconf proxychains -y --no-install-recommends
 
 	case "$DISTRO_SUPPORT" in
-		Ubuntu-16.04)
-			#Install tmux global vim
-			sudo_wrapper add-apt-repository ppa:bundt/backports -y
-			sudo_wrapper add-apt-repository ppa:alexmurray/global -y
-			sudo_wrapper add-apt-repository ppa:jonathonf/vim -y
-			#sed -i -e 's/ppa.launchpad.net/launchpad.proxy.ustclug.org/g' /etc/apt/sources.list.d/*.list
-			sudo_wrapper apt update
-			sudo_wrapper apt install tmux=3.1c-ppa-xenial1 global=6.5.7-1~bpo16.04+1 vim=2:8.2.3458-0york0~16.04 -y
-		;;
-		Ubuntu-18.04)
-			#Install tmux vim
-			sudo_wrapper add-apt-repository ppa:bundt/backports -y
-			sudo_wrapper add-apt-repository ppa:jonathonf/vim -y
-			#sed -i -e 's/ppa.launchpad.net/launchpad.proxy.ustclug.org/g' /etc/apt/sources.list.d/*.list
-			sudo_wrapper apt update
-			sudo_wrapper apt install tmux=3.1c-1ppa~bionic1 vim=2:9.0.0749-0york0~18.04 -y
-		;;
+		#Install tmux vim
+		Ubuntu-16.04|Ubuntu-18.04)
+		if !(program_exists tmux) then 
+			   update=1
+			   sudo_wrapper add-apt-repository ppa:bundt/backports -y
+			   case "$DISTRO_SUPPORT" in
+				   Ubuntu-16.04)
+			          TMUX_PACK='tmux=3.1c-ppa-xenial1'
+			       ;;
+			       *)
+			          TMUX_PACK='tmux=3.1c-1ppa~bionic1'
+			       ;;
+	               esac
+		fi
+
+		if !(program_exists vim) then
+			   update=1
+			   sudo_wrapper add-apt-repository ppa:jonathonf/vim -y
+			   case "$DISTRO_SUPPORT" in
+				   Ubuntu-16.04)
+					  VIM_PACK='vim=2:8.2.3458-0york0~16.04'
+			       ;;
+			       *)
+					  VIM_PACK='vim=2:9.0.0749-0york0~18.04'
+			       ;;
+	               esac
+		fi
+
+		    if [ $update -eq '1' ]; then
+				sudo_wrapper apt update
+				sudo_wrapper apt install $TMUX_PACK $VIM_PACK -y
+			fi
+	    ;;
 		*)
-			apt install tmux global -y --no-install-recommends
+			sudo_wrapper apt install tmux vim -y --no-install-recommends
 		;;
 	esac
 
@@ -116,7 +142,7 @@ configure_bashrc(){
 	echo "Add custom changes to .bashrc file ..."
 	cp ~/.bashrc bashrc
 	echo "#===========begin:user custom definition=========" >> bashrc
-	echo "alias g='grep -nr --color=auto --exclude-dir=.ccls-cache'" >> bashrc
+	echo "alias g='grep -nr --color=auto'" >> bashrc
 	echo "alias rm='rm -i'" >> bashrc
 	#use 256 color
 	echo "alias man=\"LESS_TERMCAP_mb=$'\e[01;31m' LESS_TERMCAP_md=$'\e[01;38;5;170m' LESS_TERMCAP_me=$'\e[0m' LESS_TERMCAP_se=$'\e[0m' LESS_TERMCAP_so=$'\e[38;5;246m' LESS_TERMCAP_ue=$'\e[0m' LESS_TERMCAP_us=$'\e[04;38;5;74m' man\"" >>bashrc
@@ -174,35 +200,7 @@ configure_vim(){
 
 	#configure vim
 	echo "Configure VIM ..."
-	#Install ccls and Nodejs for ubuntu 16.04
-	case "${DISTRO_ID}-${DISTRO_RELEASE}" in
-	    Ubuntu-20.04|Ubuntu-20.10|Ubuntu-21.04)
-		sudo_wrapper apt install ccls -y
-		#curl -sL install-node.vercel.app/lts | sudo_wrapper bash
-		install_nodejs
-		;;
-	    Ubuntu-18.04)
-		echo "Install ccls for $distro_support"
-		# ./script/install-ccls-from-source-for-ubuntu-18.04.sh
-		(cd $HOME/tools && ln -sf ccls-ubuntu-18.04 ccls)
-		#curl -sL install-node.vercel.app/lts | sudo_wrapper bash
-		install_nodejs
-		;;
-	    Ubuntu-16.04)
-		echo "Install ccls for Ubuntu 16.04"
-		# ./script/install-ccls-from-source-for-ubuntu-16.04.sh
-		(cd $HOME/tools && ln -sf ccls-ubuntu-16.04 ccls)
-		#curl -sL install-node.vercel.app/lts | sudo_wrapper bash
-		install_nodejs
-		;;
-	    *)
-		echo "Unspported DISTRO version, exit ..."
-		exit
-		;;
-	esac
-
-	cd ${HOME}/.config/coc/extensions/node_modules/coc-ccls && ln -sf node_modules/ws/lib
-	#sudo_wrapper npm config set registry https://mirrors.huaweicloud.com/repository/npm/
+	install_nodejs
 	npm_update
 	sudo_wrapper npm i -g bash-language-server
 

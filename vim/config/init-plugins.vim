@@ -685,7 +685,7 @@ if index(g:bundle_group, 'coc') >= 0
 				\ 'coc-emmet',
 				\ 'coc-snippets',
 				\ 'coc-highlight',
-				\ 'coc-ccls',
+				\ 'coc-clangd',
 				\ 'coc-sh',
 				\ 'coc-rust-analyzer',
 				\ 'coc-syntax',
