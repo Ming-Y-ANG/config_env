@@ -47,12 +47,13 @@ install_nodejs(){
 	local update=0
 	if !(program_exists node) then
 		update=1
+		echo "nodejs not exist, upgrade it now!"
 	elif version_lt $(node -v) $VERSION; then
 		update=1
+		echo "nodejs too old, upgrade it now!"
 	fi
 
 	if [ $update -eq '1' ]; then
-		echo "nodejs not exit or too old, upgrade it now!"
 		PACK=node-$VERSION-linux-x64.tar.gz
 		URL="https://nodejs.org/dist/$VERSION/$PACK"
 		PREFIX=/usr/local
@@ -203,7 +204,10 @@ configure_vim(){
 	echo "Configure VIM ..."
 	install_nodejs
 	npm_update
-	sudo_wrapper npm i -g bash-language-server
+	if !(program_exists bash-language-server) then
+		echo "install bash lsp"
+		sudo_wrapper npm i -g bash-language-server
+	fi
 
 	#rmmove vim config directory first
 	rm -rf $HOME/.vim
