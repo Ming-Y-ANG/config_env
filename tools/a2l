@@ -1,0 +1,11 @@
+#!/bin/bash
+cur_dir=`pwd`
+addr=`cat $cur_dir/System.map | grep -w $1 | cut -d' ' -f1`
+if [ -z "$addr" ]; then
+	exit;
+fi
+
+path=`arm-linux-gnueabi-addr2line -e $cur_dir/u-boot $addr`
+delimiter="uboot-1.0-503/"
+stripped_path=$(echo "$path" | awk -F"$delimiter" '{print $2}')
+echo $stripped_path
