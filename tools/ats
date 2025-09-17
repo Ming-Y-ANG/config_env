@@ -1,0 +1,22 @@
+#!/usr/bin/expect
+set timeout 20
+
+set ipaddress [lindex $argv 0]
+if {$ipaddress eq ""} {set ipaddress 10.5.29.188}
+set port [lindex $argv 1]
+if {$port eq ""} {set port 23}
+set username [lindex $argv 2]
+if {$username eq ""} {set username adm}
+set password [lindex $argv 3]
+if {$password eq ""} {set password 123456}
+
+spawn telnet $ipaddress $port
+expect "login:"
+send "$username\r"
+expect "Password:"
+send "$password\r"
+expect "#"
+send "inhand\r"
+expect "password:"
+send "64391099@inhand\r"
+interact

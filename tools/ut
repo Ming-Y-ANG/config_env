@@ -9,7 +9,8 @@ fi
 
 #default generate
 FILES_NAME="gtags.files"
-FILE_PATTERN='"*.[ch]" "*.cpp" "*.cxx" "*.cc"'
+#FILE_PATTERN='"*.[ch]" "*.cpp" "*.cxx" "*.cc"'
+FILE_PATTERN='"*.[ch]"'
 
 rm -rf $FILES_NAME
 for pattern in $FILE_PATTERN

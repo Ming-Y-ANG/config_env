@@ -1,0 +1,41 @@
+#!/bin/sh
+set -x
+
+OPENWRT_BUILDROOT_3_14="/root/QSDK/inhand-qsdk-5.0-CS1-for-ipq4029"
+#OPENWRT_BUILDROOT_4_4="/root/QSDK/inhand-qsdk-6.1.1.1-CS-for-ipq4029"
+OPENWRT_BUILDROOT_4_4="/root/INOS/ipq40x9_qsdk"
+OPENWRT_BUILDROOT_relase="/root/QSDK/ipq40x9_qsdk-for-release.git"
+VG9_GENETATE="/root/INOS/core/src"
+# VG9_BUILDROOT="/root/INOS/VG9"
+# VG9_BUILDROOT="/root/INOS/VG9-4.4-release"
+
+ROOT_DIR=$(pwd)
+
+if [ "${ROOT_DIR}" = ${OPENWRT_BUILDROOT_4_4} ] || \
+   [ "${ROOT_DIR}" = "${OPENWRT_BUILDROOT_relase}" ] || \
+   [ "${ROOT_DIR}" = "${OPENWRT_BUILDROOT_3_14}" ]; then
+	echo "OPENWRT_BUILDROOT: ${ROOT_DIR}"
+else
+	echo "OPENWRT_BUILDROOT(${ROOT_DIR}) is invalid"
+	exit
+fi
+
+OPENWRT_BUILDROOT=${ROOT_DIR}
+
+
+cd ${OPENWRT_BUILDROOT} && {
+	make inos_install V=s
+	[ "$?" != "0" ] && echo "make inos_install failed" && exit
+}
+
+cd ${VG9_GENETATE} && {
+	./scripts/install.sh VG9
+	./scripts/publish.sh release
+	[ "$?" != "0" ] && echo "relase VG9 failed" && exit
+}
+
+# cd ${VG9_BUILDROOT} && {
+# 	echo "skip copy and unzip ..."
+	#cp /root/INOS/core/release/release/VG9/INOS-VG9-V2.3.0.tar.bz2 inos
+	#./scripts/install.sh VG9
+# }

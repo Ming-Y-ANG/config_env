@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# 检查是否提供了 commit-hash 参数
+if [ -z "$1" ]; then
+  echo "Usage: $0 <commit-hash>"
+  exit 1
+fi
+
+# 获取从指定 commit-hash 到当前的所有 commit 哈希值
+git log --pretty=format:"%h %an %s" "$1"..HEAD
+
+

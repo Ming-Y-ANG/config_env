@@ -88,7 +88,7 @@ install_utilities(){
 
 	sudo_wrapper apt update
 	sudo_wrapper apt install build-essential software-properties-common unzip -y --no-install-recommends
-	sudo_wrapper apt install wget curl git tig expect bear autoconf proxychains -y --no-install-recommends
+	sudo_wrapper apt install wget curl git tig expect bear autoconf proxychains universal-ctags -y --no-install-recommends
 
 	case "$DISTRO_SUPPORT" in
 		#Install tmux vim
@@ -169,10 +169,10 @@ configure_gitconfig(){
 	echo "Configure git setttings..."
 
 	#read -p "user name for git" -t 5 username
-	username=${username:-Ming-Y-ANG}
+	username=${username:-yangming}
 
 	#read -p "user email for git" -t 5 useremail
-	useremail=${useremail:-714536723@qq.com}
+	useremail=${useremail:-yangming@inhand.com.cn}
 
 	git config --global user.name $username
 	git config --global user.email $useremail
@@ -235,7 +235,7 @@ DISTRO_ID=$(cat /etc/lsb-release  | grep DISTRIB_ID | awk -F= '{print $NF}')
 DISTRO_RELEASE=$(cat /etc/lsb-release  | grep DISTRIB_RELEASE | awk -F= '{print $NF}')
 
 case "${DISTRO_ID}-${DISTRO_RELEASE}" in
-    Ubuntu-21.04|Ubuntu-20.04|Ubuntu-20.10|Ubuntu-18.04|Ubuntu-16.04)
+    Ubuntu-22.04|Ubuntu-21.04|Ubuntu-20.04|Ubuntu-20.10|Ubuntu-18.04|Ubuntu-16.04)
 	    DISTRO_SUPPORT="${DISTRO_ID}-${DISTRO_RELEASE}"
 	;;
     *)

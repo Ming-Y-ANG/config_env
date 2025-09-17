@@ -1,0 +1,29 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+	echo "Usage: $0 <can_id_hex>(canid example: 0x18FE3185)"
+    exit 1
+fi
+
+CANID=$(( $1 ))
+
+PRIORITY=$(( (CANID >> 26) & 0x7 ))
+DP=$(( (CANID >> 24) & 0x1 ))
+PF=$(( (CANID >> 16) & 0xFF ))
+PS=$(( (CANID >> 8) & 0xFF ))
+SA=$(( CANID & 0xFF ))
+
+if [ $PF -lt 240 ]; then
+    PGN=$(( (DP << 16) | (PF << 8) ))
+else
+    PGN=$(( (DP << 16) | (PF << 8) | PS ))
+fi
+
+echo "CAN ID = $1"
+echo " Priority = $PRIORITY"
+echo " DP       = $DP"
+echo " PF       = $PF"
+echo " PS       = $PS"
+echo " SA       = $SA"
+printf " PGN      = 0x%06X (%d)\n" $PGN $PGN
+
