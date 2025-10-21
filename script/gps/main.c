@@ -18,6 +18,9 @@ void my_log(const char *format, ...);
 
 #define LOG_DB my_log
 #define MAX_FILES 50
+#define POLL_MSG_OK 1
+#define POLL_MSG_NAK 2
+#define POLL_MSG_CKSUM_ERR 3
 
 int gl_exit = 0;
 int frontend = 0;
@@ -40,7 +43,7 @@ typedef struct ubx_pro_msg{
     unsigned char msg_id;
     unsigned short payload_len;
     unsigned char payload[0];
-}ubx_pro_msg;
+}__attribute__((__packed__))ubx_pro_msg;
 
 struct ubx_cfg_poll gl_ubx_m8_cfg_poll[] = {
 	{"MON-VER", 0xB5, 0x62, 0x0A, 0x04, 0x00, 0x00, 0x0E, 0x34},
@@ -348,13 +351,42 @@ struct ubx_cfg_poll gl_ubx_m9_cfg_poll[] = {
 	{"CFG-VALGET", 0xB5, 0x62, 0x06, 0x8B, 0x08, 0x00, 0x00, 0x00, 0x40, 0x05, 0x00, 0x00, 0xFF, 0x0F, 0xEC, 0x37},
 };
 
+static int do_checksum(unsigned char *buf, int len)
+{
+	int ret = 0;
+	unsigned char CK_A = 0, CK_B = 0;
+
+	for(int i = 0; i < len -2; i++) {
+		CK_A = CK_A + buf[i];
+		CK_B = CK_B + CK_A;
+	}
+
+	if(CK_A == buf[len - 2] && CK_B == buf[len -1]){
+		ret = 1;
+	}
+
+	return ret;
+}
+
+static void write_msg_to_file(FILE *fp, const char *desc, unsigned char *buf, int size)
+{
+	if(fp){
+		fprintf(fp, "%s -", desc);
+		for(int i = 0; i < size; i++){
+			fprintf(fp, " %02X", buf[i]);
+		}
+		fprintf(fp, "\n");
+	}
+}
+
 static int poll_ubx_data(int fd, void *msg, FILE *fp, int timeout)
 {
 #define UBX_SYNC_CHAR1 0xb5
 #define UBX_SYNC_CHAR2 0x62
 
 	struct timespec ts = {0};
-	unsigned char buf[1024] = {0};
+	unsigned char buf[2048] = {0};
+	unsigned char msg_buf[2048] = {0};
 	unsigned int ts_ms = 0, ts_end_ms = 0;;
 	int bytes_read = 0;
 	fd_set read_fds;
@@ -402,41 +434,52 @@ static int poll_ubx_data(int fd, void *msg, FILE *fp, int timeout)
 				unsigned short offset = 0;
 				while(bytes_read > 0){
 					if(msg_size > 0){//read continue
-						for(int i = 0; i < bytes_read && write_size < msg_size; i++){
-							if(fp){
-								fprintf(fp, " %02X", buf[i]);
-								write_size++;
-								offset++;
+						int bytes_write = 0;
+						if(bytes_read + write_size >= msg_size){
+							bytes_write = msg_size - write_size;
+						}else {
+							bytes_write = bytes_read;
+						}
+						memcpy(msg_buf + write_size, buf, bytes_write);
+						write_size += bytes_write; 
+						if(write_size >= msg_size){
+							if(do_checksum(&msg_buf[2], msg_size - 2)){
+								write_msg_to_file(fp, poll->desc, &msg_buf[2], write_size - 4);
+								done = POLL_MSG_OK;
+							}else {
+								done = POLL_MSG_CKSUM_ERR;
 							}
 						}
-						bytes_read -= offset;
-						if(write_size >= msg_size){
-							done = 1;
-							break;
-						}
+						bytes_read -= bytes_write;
+						break;
 					}else {//find response
 						if(buf[offset] == UBX_SYNC_CHAR1 && buf[offset + 1] == UBX_SYNC_CHAR2){
 							ubx_pro_msg *rmsg = (ubx_pro_msg *)(buf + offset);
-							if(rmsg->payload_len + 8 < (sizeof(buf) - offset)){
-								if(rmsg->class_id == msg_class && rmsg->msg_id == msg_id){
-									if(frontend) LOG_DB("... successfully completed!\n");
-									if(fp){
-										fprintf(fp, "%s -", poll->desc);
-										msg_size = rmsg->payload_len + 4;
-										recv_size = bytes_read - offset - 2;
-										for(int i = 0; i < msg_size && i < recv_size; i++){
-											fprintf(fp, " %02X", buf[offset + 2 + i]);
-											write_size++;
-										}
-										offset += write_size + 2;
-										bytes_read -= offset;
-
-										if(write_size >= msg_size){
-											done = 1;
+							if(rmsg->class_id == msg_class && rmsg->msg_id == msg_id){
+								if(frontend) LOG_DB("... successfully completed!\n");
+								if(fp){
+									msg_size = rmsg->payload_len + 8;  
+									recv_size = bytes_read - offset; 
+									if(recv_size >= msg_size){
+										write_size = msg_size;
+									}else {
+										write_size = recv_size;
+									}
+									memcpy(msg_buf, buf + offset, write_size);
+									if(write_size >= msg_size){
+										if(do_checksum(&msg_buf[2], msg_size - 2)){
+											write_msg_to_file(fp, poll->desc, &msg_buf[2], write_size - 4);
+											done = POLL_MSG_OK;
+										}else {
+											done = POLL_MSG_CKSUM_ERR;
 										}
 									}
-									break;
-								}else if(rmsg->class_id == 0x05 && rmsg->msg_id == 0x00){ //NAK
+									offset += write_size;
+									bytes_read -= offset;
+								}
+								break;
+							}else if(rmsg->class_id == 0x05 && rmsg->msg_id == 0x00){ //NAK
+								if(rmsg->payload[0] == msg_class && rmsg->payload[1] == msg_id){
 									if(frontend) LOG_DB("... message rejected!\n");
 									done = 2;
 									break;
@@ -454,15 +497,12 @@ static int poll_ubx_data(int fd, void *msg, FILE *fp, int timeout)
 		ts_ms = ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 	}while(ts_ms < ts_end_ms && !done);
 
-	if(done == 1 && fp){
-		fprintf(fp, "\n");
-	}
-
 	return done;
 }
 
 static void dump_ubx_cfg(int fd, char *file, int modem)
 {
+#define MAX_RETRY 2
 	int timeout = 0;
 	
 	if(file){
@@ -471,17 +511,22 @@ static void dump_ubx_cfg(int fd, char *file, int modem)
 		if(modem == 9){
 			cfg_poll = gl_ubx_m9_cfg_poll;
 			poll_len = sizeof(gl_ubx_m9_cfg_poll)/sizeof(gl_ubx_m9_cfg_poll[0]);
-			timeout = 400;
+			timeout = 1500;
 		}else{
 			cfg_poll = gl_ubx_m8_cfg_poll;
 			poll_len = sizeof(gl_ubx_m8_cfg_poll)/sizeof(gl_ubx_m8_cfg_poll[0]);
-			timeout = 200;
+			timeout = 1000;
 		}
 
 		FILE *fp = fopen(file, "w");
 		if(fp){
 			for(int i = 0; i < poll_len; i++){
-				poll_ubx_data(fd, &cfg_poll[i], fp, timeout);
+				for(int retry = 0; retry < MAX_RETRY + 1; retry++){
+					int done = poll_ubx_data(fd,  &cfg_poll[i], fp, timeout);
+					if(done == POLL_MSG_NAK || done == POLL_MSG_OK){
+						break;
+					}
+				}
 				if(gl_exit) break;
 			}
 			fclose(fp);
@@ -606,12 +651,12 @@ int read_gpio_value(int gpio_num)
 
     fd = open(path, O_RDONLY);
     if (fd < 0) {
-        LOG_DB("open gpio value");
+        LOG_DB("open gpio value\n");
         return -1;
     }
 
     if (read(fd, value_str, sizeof(value_str)) < 0) {
-        LOG_DB("read gpio value");
+        LOG_DB("read gpio value\n");
         close(fd);
         return -1;
     }
@@ -741,7 +786,7 @@ static int tz_update(void)
 
     int fd = open("/etc/TZ", O_RDONLY);
     if (fd < 0) {
-        LOG_DB("open /etc/TZ failed");
+        LOG_DB("open /etc/TZ failed\n");
         return -1;
     }
 
@@ -805,10 +850,7 @@ void usage(char *name)
 			, name);
 }
 
-// uart1 115200 ubx debug
-// echo -ne '\xB5\x62\x06\x00\x14\x00\x01\x00\x00\x00\xD0\x08\x00\x00\x00\xC2\x01\x00\x07\x00\x03\x00\x00\x00\x00\x00\xC0\x7E' > /dev/ttyUSB0
-// uart1 230400 ubx debug
-// echo -ne '\xB5\x62\x06\x00\x14\x00\x01\x00\x00\x00\xD0\x08\x00\x00\x00\x84\x03\x00\x07\x00\x03\x00\x00\x00\x00\x00\x84\xE8' > /dev/ttyUSB0
+
 int main(int argc, char **argv) 
 {
 	int c;
@@ -867,14 +909,14 @@ int main(int argc, char **argv)
 	signal(SIGINT, sig_handler);
 	signal(SIGCHLD, SIG_IGN);
     
+	ubx_debug_message(gl_serial_fd);
+	usleep(10000);
 	//dump cfg
 	snprintf(cfg_file, sizeof(cfg_file), "%s/ubx.cfg", fpath);
 	LOG_DB("dump cfg -> %s\n", cfg_file);
 	dump_ubx_cfg(gl_serial_fd, cfg_file, modem);
 	//log record
 	LOG_DB("dump log -> %s(file limit: size -> %dM, num -> %d)\n", fpath, log_size / 1024 / 1024, MAX_FILES);
-	ubx_debug_message(gl_serial_fd);
-
 	pthread_create(&tid_log, NULL, gnss_log_record, fpath);
 	if(modem == 9){//M9
 		pthread_create(&tid_ant, NULL, ant_status_record, fpath);
