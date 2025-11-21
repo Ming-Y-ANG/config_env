@@ -1,0 +1,27 @@
+#kernel config
+CONFIG_SWAP=y
+#CGroup SWAP
+CONFIG_MEMCG_SWAP=y
+CONFIG_MEMCG_SWAP_ENABLED=y
+
+#swapfile operation as same as swap partition, demo is 1G
+sudo dd if=/dev/zero of=/swapfile bs=1024 count=1048576
+
+#format swap area
+mkswap /swapfile
+
+#enable swap
+swapon /swapfile
+
+#To make the change permanent open the /etc/fstab file and append the following line
+#/etc/fstab
+/swapfile swap swap defaults 0 0
+
+#60 is OK for most Linux systems, or production servers, you may need to set a lower value.
+cat /proc/sys/vm/swappiness
+
+#disable swap
+swapoff -v /swapfile
+
+#show swap 
+free -h 
