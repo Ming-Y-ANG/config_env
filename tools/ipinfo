@@ -1,0 +1,6 @@
+#!/bin/bash
+if [ $# != 1 ]; then
+	echo "not find ip addr!"
+	exit
+fi
+curl https://ipinfo.io/$1
