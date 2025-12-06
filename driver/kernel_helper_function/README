@@ -1,0 +1,35 @@
+1.理解 container_of 宏
+
+2.内核链表的基本操作
+
+3.内核休眠机制 Wait queue
+
+4.延时和定时器管理
+  1).Jiffies and HZ(Jiffies += HZ per second)
+  2).标准定时器/高精度定时器
+  3).Xdelay 函数族(#include <linux/delay>)
+
+5.Mutex Semaphore Spinlock
+
+6.Work deferring mechanism
+  1).SoftIRQs: Executed in an atomic context,used only for very fast processing, 
+			   since it runs with a disabled scheduler (in an interrupt context). You'll
+               rarely (almost never) want to deal with softirq directly. There are only networks and block
+               device subsystems using softirq
+  2).Tasklets: Executed in an atomic context,Tasklets are an instantiation of softirqs, and will be
+               sufficient in almost every case that you feel the need to use softirqs
+  3).Workqueues: Executed in a process context
+
+7.Kernel interruption mechanism
+  1).Registering an interrupt handler, request_irq() free_irq()
+  2).Interrupt handler and lock, spin_lock_irqsave() spin_unlock_irqrestore()
+  3).Concept of bottom halves(SoftIRQs,Tasklets,Workqueues)
+
+8.Invoking user-space applications from the kernel
+
+softirqs 支持多cpu并行执行，且函数可重入
+
+tasklets 不允许多cpu上的并行执行，编程相对简单
+
+workqueues 机制中，不允许同一个work同时被加入到一个或多个工作队列中(设置 WORK_STRUCT_PENDING_BIT 标志位)，
+只有当work正在执行或者已经执行完成，才能重新添加该 work 到工作队列中，所以也不存在多 cpu 并发执行的问题
