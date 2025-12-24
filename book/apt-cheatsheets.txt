@@ -1,0 +1,6 @@
+#show apt install packages by manual
+apt-mark showmanual > manual.list
+
+#sync apt manual installed packages to another machine
+apt update
+xargs -a manual.list apt install -y
