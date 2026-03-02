@@ -43,7 +43,9 @@ npm_update() {
 }
 
 install_nodejs(){
-	local VERSION=v16.18.0
+	#coc recommend >= v16.18.0
+	#local VERSION=v16.18.0 
+	local VERSION=v20.9.0
 	local update=0
 	if !(program_exists node) then
 		update=1
