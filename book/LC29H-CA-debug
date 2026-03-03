@@ -1,0 +1,174 @@
+LC29H CA GNSS 调试
+
+
+#查固件版本
+echo -e "\$PQTMVERNO*58\r\n" > /dev/ttyMSM1  
+$PQTMVERNO,LC29HCANR11A02S_DSA4,2023/04/12,13:28:39*0D
+
+
+
+echo -e "\$PQTMCFGMSGRATE,R,PQTMSENMSG,0*56\r\n" > /dev/ttyMSM1
+
+$PQTMCFGMSGRATE,W,<MsgName>,<Rate>[,<MsgVer>]*<Checksum><CR><LF>
+
+
+echo -e "\$PQTMCFGMSGRATE,R,\r\n" > /dev/ttyMSM1
+
+
+
+开启 $PQTMSENMSG
+echo -e "\$PAIR6010,1,1*0D\r\n" > /dev/ttyMSM1
+$PAIR001,6010,0*0C
+
+echo -e "\$PQTMSAVEPAR*5A\r\n" > /dev/ttyMSM1
+$PQTMSAVEPAR,OK*72
+
+echo 1 > /sys/class/gpio/gpio64/value
+echo 0 > /sys/class/gpio/gpio64/value
+
+
+
+
+
+
+#reset 模块
+echo 1 > /sys/class/gpio/gpio64/value
+echo 0 > /sys/class/gpio/gpio64/value
+
+
+#回复出厂
+echo -e "\$PQTMRESTOREPAR*13\r\n" > /dev/ttyMSM1
+
+#开启PQTMPVT周期性上报
+echo -e "\$PQTMCFGMSGRATE,R,PQTMPVT,1*04\r\n" > /dev/ttyMSM1
+          $PQTMCFGMSGRATE,R,PQTMPVT,1*04
+$PQTMCFGMSGRATE,OK,PQTMPVT,0,1*4E
+
+echo -e "\$PQTMCFGMSGRATE,W,PQTMPVT,1,1*1C\r\n" > /dev/ttyMSM1
+$PQTMCFGMSGRATE,OK*29
+
+echo -e "\$PQTMSAVEPAR*5A\r\n" > /dev/ttyMSM1
+$PQTMSAVEPAR,OK*72
+
+echo 1 > /sys/class/gpio/gpio64/value
+echo 0 > /sys/class/gpio/gpio64/value
+
+
+echo "\$PAIR6010,1,1*0D" > /dev/ttyMSM1
+
+
+#关闭PQTMPVT周期性上报
+echo -e "\$PQTMRESTOREPAR*13\r\n" > /dev/ttyMSM1
+
+#开启PQTMPVT周期性上报
+echo -e "\$PQTMCFGMSGRATE,R,PQTMPVT,1*04\r\n" > /dev/ttyMSM1
+$PQTMCFGMSGRATE,OK,PQTMPVT,1,1*4E
+
+echo -e "\$PQTMCFGMSGRATE,W,PQTMPVT,0,1*1D\r\n" > /dev/ttyMSM1
+$PQTMCFGMSGRATE,OK*29
+
+echo -e "\$PQTMSAVEPAR*5A\r\n" > /dev/ttyMSM1
+$PQTMSAVEPAR,OK*72
+
+echo 1 > /sys/class/gpio/gpio64/value
+echo 0 > /sys/class/gpio/gpio64/value
+
+
+#PQTMPVT 周期性上报数据
+$PQTMPVT,1,441143,20240202,023223.000,,3,14,18,30.57544399,104.06780668,615.942,-31.927,-0.037,-0.079,0.078,0.087,244.59,1.31,2.14*44
+
+
+
+echo -e "\$PQTMCFGMSGRATE,R,PQTMPVT,1*04\r\n" > /dev/ttyMSM1
+$PQTMCFGMSGRATE,OK,PQTMPVT,1,1*4F
+
+
+echo -e "\$PQTMCFGMSGRATE,W,PQTMPVT,0,1*1D\r\n" > /dev/ttyMSM1
+$PQTMCFGMSGRATE,OK*29
+
+
+echo -e "\$PQTMCFGMSGRATE,W,PQTMPVT,0,1*1D\r\n" > /dev/ttyMSM1
+
+
+echo -e "\$PQTMCFGEINSMSG,0*0E\r\n" > /dev/ttyMSM1
+
+
+
+
+
+
+/www # stty -F /dev/ttyMSM1 
+speed 115200 baud; line = 0;
+intr = <undef>; quit = <undef>; erase = <undef>; kill = <undef>; eof = <undef>; eol = <undef>;
+eol2 = <undef>; swtch = <undef>; start = <undef>; stop = <undef>; susp = <undef>; rprnt = <undef>;
+werase = <undef>; lnext = <undef>; flush = <undef>; min = 1; time = 0;
+-brkint -icrnl -imaxbel
+-onlcr
+-isig -icanon -iexten -echo -echoe -echok -echoctl -echoke
+
+
+
+$PQTMCFGMSGRATE,R,PQTMPVT,1*04
+
+
+/ #
+/ # echo -e "\$PQTMSAVEPAR*5A\r\n" > /dev/ttyMSM1
+/ #
+/ # echo -e "\$PAIR004*3E\r\n" > /dev/ttyMSM1 ^C
+/ # echo -e "\$PQTMCFGMSGRATE,R,PQTMPVT,1*04\r\n" > /dev/ttyMSM1
+/ # echo -e "\$PQTMCFGMSGRATE,R,PQTMPVT,2*04\r\n" > /dev/ttyMSM1
+/ #
+/ # echo -e "\$PQTMCFGMSGRATE,R,PQTMPVT,1*04\r\n" > /dev/ttyMSM1
+/ #
+/ # echo 1 > /sys/class/gpio64^C
+/ # echo 1 > /sys/class/gpio/gpio64/value
+/ # echo 0 > /sys/class/gpio/gpio64/value
+/ #
+/ # echo -e "\$PQTMCFGMSGRATE,R,PQTMPVT,1*04\r\n" > /dev/ttyMSM1
+/ #
+/ #
+/ # echo -e "\$PQTMCFGMSGRATE,R,PQTMPVT,1*04\r\n" > /dev/ttyMSM1^C
+/ # echo -e "\$PQTMRESTOREPAR*13\r\n" > /dev/ttyMSM1
+/ #
+/ #
+/ #
+/ #
+/ #
+/ #
+/ #
+/ #
+/ #
+/ # echo -e "\$PQTMCFGMSGRATE,W,PQTMPVT,1,1*1C\r\n" > /dev/ttyMSM1
+/ #
+/ # echo 0 > /^Cs/class/gpio/gpio64/value
+/ # echo -e "\$PQTMSAVEPAR*5A\r\n" > /dev/ttyMSM1
+/ #
+/ #
+/ #
+/ # echo -e "\$PQTMRESTOREPAR*1^Cr\n" > /dev/ttyMSM1
+/ # echo -e "\$PAIR003*39\r\n" > /dev/ttyMSM1
+/ #
+/ #
+/ # echo -e "\$PAIR002*38\r\n" > /dev/ttyMSM1
+/ #
+/ #
+/ # echo -e "\$PAIR007*3D\r\n" > /dev/ttyMSM1
+/ #
+/ # echo 1 > /sys/class/gpio/gpio64/value
+/ #
+/ # echo 0 > /sys/class/gpio/gpio64/value
+/ # Connection closed by foreign host.
+
+
+PQTMIMU
+
+
+echo -e "\$PQTMCFGMSGRATE,W,PQTMIMU,1,1*1F\r\n" > /dev/ttyMSM1
+
+
+$PQTMCFGMSGRATE,W,PQTMPVT,1,1*1C\r\n
+
+
+echo -e "$PQTMCFGMSGRATE,R,PQTMPVT,1*04\r\n" > /dev/ttyMSM1
+
+$PQTMCFGMSGRATE,R,<MsgName>[,<MsgVer>]*<Checksum><CR><LF>
