@@ -1,0 +1,18 @@
+#nvim install releases page provides pre-built binaries for Linux systems.
+curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+sudo rm -rf /opt/nvim-linux-x86_64
+sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
+#soft link -> /usr/bin/nvim
+ln -s /opt/nvim-linux-x86_64/bin/nvim /usr/bin/nvim
+=====================================
+mkdir ~/.config/nvim
+cp -r ./* ~/.config/nvim/
+=====================================
+dep:
+sudo apt install ripgrep fd-find
+npm install -g tree-sitter-cli
+=====================================
+install c cpp lua parser:
+vim cmd:TSInstall c|cpp|lua  --> ~/.local/share/nvim/lazy/nvim-treesitter/parser/
+=====================================
+Nerd_fonts needed by nvim plugins, see book/Nerd_fonts for more details
