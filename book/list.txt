@@ -1,0 +1,2 @@
+#Beginner's Guide to Linkers for C/C++
+https://www.lurklurk.org/linkers/linkers.html
