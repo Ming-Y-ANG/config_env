@@ -79,7 +79,7 @@ local which_key = {
 }
 
 --dep: npm install -g tree-sitter-cli
---vim cmd: :TSInstall c|cpp|lua  --> ~/.local/share/nvim/lazy/nvim-treesitter/parser/
+--vim cmd: :TSInstall c|cpp|lua  --> ~/.local/share/nvim/site/parser
 local treesitter = {
 	'nvim-treesitter/nvim-treesitter',
 	lazy = false,
@@ -129,24 +129,51 @@ local opencode = {
 	},
 	config = function()
 		---@type opencode.Opts
-		vim.g.opencode_opts = {
-			-- Your configuration, if any; goto definition on the type or field for details
+		local opencode_cmd = 'opencode --port'  -- CLI 命令
+		---@type snacks.terminal.Opts
+		local snacks_terminal_opts = {
+			win = {
+				position = 'right',
+				enter = false,
+				on_win = function(win)
+					-- 设置 terminal keymap 和 cleanup
+					require('opencode.terminal').setup(win.win)
+				end,
+			},
 		}
-
+		vim.g.opencode_opts = {
+			-- UI 配置
+			ui = {
+				window = {
+					layout = "vertical",
+					position = "right",
+					width = 60,
+				}
+			},
+			-- server 配置
+			server = {
+				auto_start = true,  -- 自动启动
+				start = function()
+					require('snacks.terminal').open(opencode_cmd, snacks_terminal_opts)
+				end,
+				stop = function()
+					require('snacks.terminal').get(opencode_cmd, snacks_terminal_opts):close()
+				end,
+				toggle = function()
+					require('snacks.terminal').toggle(opencode_cmd, snacks_terminal_opts)
+				end,
+			},
+		}
 		vim.o.autoread = true -- Required for `opts.events.reload`
-
 		-- Recommended/example keymaps
 		vim.keymap.set({ "n", "x" }, "<C-a>", function() require("opencode").ask("@this: ", { submit = true }) end, { desc = "Ask opencode…" })
-		vim.keymap.set({ "n", "x" }, "<C-x>", function() require("opencode").select() end,                          { desc = "Execute opencode action…" })
-		vim.keymap.set({ "n", "t" }, "<C-.>", function() require("opencode").toggle() end,                          { desc = "Toggle opencode" })
-
-		vim.keymap.set({ "n", "x" }, "go",  function() return require("opencode").operator("@this ") end,        { desc = "Add range to opencode", expr = true })
-		vim.keymap.set("n",          "goo", function() return require("opencode").operator("@this ") .. "_" end, { desc = "Add line to opencode", expr = true })
-
-		vim.keymap.set("n", "<S-C-u>", function() require("opencode").command("session.half.page.up") end,   { desc = "Scroll opencode up" })
+		vim.keymap.set({ "n", "x" }, "<C-x>", function() require("opencode").select() end, { desc = "Execute opencode action…" })
+		vim.keymap.set({ "n", "t" }, "<C-t>", function() require("opencode").toggle() end, { desc = "Toggle opencode" })
+		vim.keymap.set({ "n", "x" }, "go", function() return require("opencode").operator("@this ") end, { desc = "Add range to opencode", expr = true })
+		vim.keymap.set("n", "goo", function() return require("opencode").operator("@this ") .. "_" end, { desc = "Add line to opencode", expr = true })
+		vim.keymap.set("n", "<S-C-u>", function() require("opencode").command("session.half.page.up") end, { desc = "Scroll opencode up" })
 		vim.keymap.set("n", "<S-C-d>", function() require("opencode").command("session.half.page.down") end, { desc = "Scroll opencode down" })
-
-		-- You may want these if you use the opinionated `<C-a>` and `<C-x>` keymaps above — otherwise consider `<leader>o…` (and remove terminal mode from the `toggle` keymap)
+		-- 保留原有 + / - 功能
 		vim.keymap.set("n", "+", "<C-a>", { desc = "Increment under cursor", noremap = true })
 		vim.keymap.set("n", "-", "<C-x>", { desc = "Decrement under cursor", noremap = true })
 	end,
@@ -360,6 +387,33 @@ local nvim_ufo = {
 	end
 }
 
+local signify =  {
+	"mhinz/vim-signify",
+    event = { "BufReadPre", "BufNewFile" }, -- 打开文件时加载
+    config = function()
+		vim.g.signify_vcs_list = { "git", "svn" }
+
+		vim.g.signify_sign_add = "+"
+		vim.g.signify_sign_delete = "_"
+		vim.g.signify_sign_delete_first_line = "‾"
+		vim.g.signify_sign_change = "~"
+		vim.g.signify_sign_changedelete = "~"
+
+		vim.g.signify_vcs_cmds = {
+			git = "git diff --no-color --diff-algorithm=histogram --no-ext-diff -U0 -- %f",
+		}
+	end,
+}
+
+local fugitive = {
+	"tpope/vim-fugitive",
+	cmd = { "Git" },
+	--keys = {
+	--	{ "<leader>gs", "<cmd>Git<CR>", desc = "Git status" },
+	--	{ "<leader>gb", "<cmd>Git blame<CR>", desc = "Git blame" },
+	--},
+}
+
 local plugins = {
 	nvim_tree,
 	lualine,
@@ -377,6 +431,8 @@ local plugins = {
 	alpha_nvim,
 	telescope,
 	nvim_ufo,
+	signify,
+	fugitive,
 }
 
 require("lazy").setup(plugins)

@@ -41,3 +41,20 @@ vim.diagnostic.config({
   },
 })
 
+-- 总是显示侧边栏（用于显示 mark / git diff / 诊断信息）
+vim.opt.signcolumn = "yes"
+
+-- 总是显示标签栏
+vim.opt.showtabline = 1
+
+-- 打开文件回到上次的位置
+vim.api.nvim_create_autocmd("BufReadPost", {
+  callback = function()
+    local mark = vim.api.nvim_buf_get_mark(0, '"')
+    local lcount = vim.api.nvim_buf_line_count(0)
+    if mark[1] > 0 and mark[1] <= lcount then
+      vim.api.nvim_win_set_cursor(0, mark)
+    end
+  end,
+})
+
