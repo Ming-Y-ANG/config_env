@@ -1,29 +1,74 @@
 #!/bin/bash
 
-if [ -z "$1" ]; then
-	echo "Usage: $0 <can_id_hex>(canid example: 0x18FE3185)"
+usage() {
+    echo "Usage:"
+    echo "  Parse CAN ID:"
+    echo "    $0 canid <can_id>                (e.g. 0x18FE3185 or 419364229)"
+    echo ""
+    echo "  Build CAN ID from PGN:"
+    echo "    $0 pgn <pgn_dec> <sa> [priority] [da]"
+    echo "    (priority default=6, da default=0xFF for broadcast)"
     exit 1
-fi
+}
 
-CANID=$(( $1 ))
+[ $# -lt 2 ] && usage
 
-PRIORITY=$(( (CANID >> 26) & 0x7 ))
-DP=$(( (CANID >> 24) & 0x1 ))
-PF=$(( (CANID >> 16) & 0xFF ))
-PS=$(( (CANID >> 8) & 0xFF ))
-SA=$(( CANID & 0xFF ))
+MODE=$1
 
-if [ $PF -lt 240 ]; then
-    PGN=$(( (DP << 16) | (PF << 8) ))
+# =========================
+# 解析 CAN ID
+# =========================
+if [ "$MODE" = "canid" ]; then
+    CANID=$(( $2 ))
+
+    PRIORITY=$(( (CANID >> 26) & 0x7 ))
+    DP=$(( (CANID >> 24) & 0x1 ))
+    PF=$(( (CANID >> 16) & 0xFF ))
+    PS=$(( (CANID >> 8) & 0xFF ))
+    SA=$(( CANID & 0xFF ))
+
+    if [ $PF -lt 240 ]; then
+        PGN=$(( (DP << 16) | (PF << 8) ))
+    else
+        PGN=$(( (DP << 16) | (PF << 8) | PS ))
+    fi
+
+    echo "CAN ID = $2"
+    echo " Priority = $PRIORITY"
+    echo " DP       = $DP"
+    echo " PF       = $PF"
+    echo " PS       = $PS"
+    echo " SA       = $SA"
+    printf " PGN      = 0x%06X (%d)\n" $PGN $PGN
+
+# =========================
+# 生成 CAN ID
+# =========================
+elif [ "$MODE" = "pgn" ]; then
+    PGN=$2
+    SA=$3
+    PRIORITY=${4:-6}
+    DA=${5:-255}   # 默认广播
+
+    PF=$(( (PGN >> 8) & 0xFF ))
+    PS=$(( PGN & 0xFF ))
+    DP=$(( (PGN >> 16) & 0x1 ))
+
+    if [ $PF -lt 240 ]; then
+        # PDU1（点对点），PS = DA
+        PS=$DA
+    fi
+
+    CANID=$(( (PRIORITY << 26) | (DP << 24) | (PF << 16) | (PS << 8) | SA ))
+
+    echo "Input:"
+    echo " PGN      = $PGN"
+    echo " SA       = $SA"
+    echo " Priority = $PRIORITY"
+    echo " DA       = $DA"
+
+    printf "CAN ID = 0x%08X (%d)\n" $CANID $CANID
+
 else
-    PGN=$(( (DP << 16) | (PF << 8) | PS ))
+    usage
 fi
-
-echo "CAN ID = $1"
-echo " Priority = $PRIORITY"
-echo " DP       = $DP"
-echo " PF       = $PF"
-echo " PS       = $PS"
-echo " SA       = $SA"
-printf " PGN      = 0x%06X (%d)\n" $PGN $PGN
-
