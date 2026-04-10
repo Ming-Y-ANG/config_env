@@ -1,0 +1,23 @@
+# 配置监听端口和协议
+user root
+listener 1883
+#listener 1883
+protocol mqtt
+
+# TLS certs auth
+cafile /root/mosquitto/certs/ca.crt
+certfile /root/mosquitto/certs/server.crt
+keyfile /root/mosquitto/certs/server.key
+
+# 强制客户端证书验证（可选）
+#require_certificate false
+
+# 匿名访问
+allow_anonymous true
+
+# 指定密码文件（如果需要用户密码认证）
+#password_file /etc/mosquitto/passwd
+
+# 配置 ACL 文件（如果需要）
+#acl_file /etc/mosquitto/aclfile
+#tls_version tlsv1.2

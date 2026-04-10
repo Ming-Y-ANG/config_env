@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weboscoket MQTT</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.5.3/mqtt.min.js"></script>
+</head>
+<body>
+  Use WebSocket client to connect to MQTT server
+</body>
+<script>
+const clientId = 'mqttjs_' + Math.random().toString(16).substr(2, 8)
+
+const host = 'ws://10.5.29.188:1086'
+
+const options = {
+  keepalive: 30,
+  clientId: clientId,
+  protocolId: 'MQTT',
+  protocolVersion: 4,
+  clean: true,
+  reconnectPeriod: 1000,
+  connectTimeout: 30 * 1000,
+  will: {
+    topic: 'WillMsg',
+    payload: 'Connection Closed abnormally..!',
+    qos: 0,
+    retain: false
+  },
+  rejectUnauthorized: false
+}
+
+console.log('connecting mqtt client')
+const client = mqtt.connect(host, options)
+
+client.on('error', (err) => {
+  console.log('Connection error: ', err)
+  client.end()
+})
+
+client.on('reconnect', () => {
+  console.log('Reconnecting...')
+})
+
+client.on('connect', () => {
+  console.log('Client connected:' + clientId)
+  client.subscribe('v1/obd/info', { qos: 0 })
+  client.subscribe('v1/gnss/info', { qos: 0 })
+  client.subscribe('v1/motion/info', { qos: 0 })
+  client.subscribe('v1/cellular1/info', { qos: 0 })
+  client.subscribe('v1/summary/info', { qos: 0 })
+  client.publish('v1/gnss/refresh', '{"client_token": "3bzJQ200UkLS606lMhW3muUv73ycUT7J"}', { qos: 0 , retain: false})
+  client.subscribe('v1/gnss/refresh/resp', { qos: 0 })
+})
+
+client.on('message', (topic, message, packet) => {
+  console.log('Received Message: ' + message.toString() + '\nOn topic: ' + topic)
+})
+
+client.on('close', () => {
+  console.log(clientId + ' disconnected')
+})
+</script>
+</html>
