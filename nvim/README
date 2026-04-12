@@ -15,4 +15,4 @@ npm install -g tree-sitter-cli
 install c cpp lua parser:
 vim cmd:TSInstall c|cpp|lua  --> ~/.local/share/nvim/lazy/nvim-treesitter/parser/
 =====================================
-Nerd_fonts needed by nvim plugins, see book/Nerd_fonts for more details
+Nerd_fonts needed by nvim plugins, see book/cheatsheets.txt(Nerd_fonts) for more details
