@@ -297,7 +297,8 @@ if index(g:bundle_group, 'gtags-cscope') >= 0
 	" let $GTAGSLABEL = 'native-pygments'
 	let $GTAGSLABEL = 'native'
 	" let $GTAGSCONF = '/home/dengzt/.gtagsrc'
-	let cscopeprg = '/usr/bin/gtags-cscope'
+	"vim cmd ":echo &cscopeprg" check it's work
+	let cscopeprg = '/usr/local/bin/gtags-cscope'
 	set csto=0
 	set cst
 	let GtagsCscope_Auto_Load = 1
