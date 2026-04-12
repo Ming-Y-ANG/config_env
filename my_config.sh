@@ -229,6 +229,8 @@ configure_gitconfig() {
     git config --global alias.cp cherry-pick
     git config --global push.default simple
     git config --global credential.helper store
+    #HTTP2 may cause 'clone succeeded, but checkout failed', set as bellow solve it
+    #git config --global http.version HTTP/1.1
 }
 
 configure_vim() {
