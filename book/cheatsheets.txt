@@ -52,3 +52,15 @@ swapoff -v /swapfile
 #show swap 
 free -h 
 ========================================
+#fcitx5 中文输入法
+#remove old 
+apt purge fcitx* ibus*
+apt install fcitx5 fcitx5-chinese-addons fcitx5-configtool
+#add env -> ~/.profile
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
+
+source ~/.profile
+fcitx5-configtool -> pinyin
+========================================
