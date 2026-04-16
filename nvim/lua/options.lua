@@ -58,3 +58,12 @@ vim.api.nvim_create_autocmd("BufReadPost", {
   end,
 })
 
+vim.opt.list = false
+vim.opt.listchars = {
+    tab = "»·",
+    trail = "·",
+    space = "·",
+    eol = "$",
+}
+
+vim.opt.wrap = false
