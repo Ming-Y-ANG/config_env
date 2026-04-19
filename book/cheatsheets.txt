@@ -64,3 +64,12 @@ export XMODIFIERS=@im=fcitx
 source ~/.profile
 fcitx5-configtool -> pinyin
 ========================================
+opencode plugins
+npm install opencode-enhancer-plugin@latest
+#~/.config/opencode/opencode.json -> add:
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "opencode-enhancer-plugin@latest"
+  ]
+}
