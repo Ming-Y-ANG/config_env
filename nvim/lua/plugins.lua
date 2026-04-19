@@ -414,6 +414,28 @@ local fugitive = {
 	--},
 }
 
+local gtags_cscope = {
+  "dhananjaylatkar/cscope_maps.nvim",
+  dependencies = {
+    "nvim-telescope/telescope.nvim", -- 可选，如果你希望使用 telescope 作为结果选择器
+    -- "ibhagwan/fzf-lua",           -- 可选，如果你希望使用 fzf-lua
+  },
+  opts = {
+    cscope = {
+      exec = "gtags-cscope",        -- 关键：指定使用 gtags-cscope 作为后端
+      db_file = "./GTAGS",          -- GNU GLOBAL 生成的数据库文件通常是 GTAGS
+      picker = "telescope",         -- 可选：telescope, quickfix, fzf-lua 等
+      skip_picker_for_single_result = true, -- 只有一个结果时直接跳转
+	  project_rooter = {
+		  enable = true,                -- 开启向上查找数据库的功能
+		  change_cwd = false,           -- 建议设为 false，只找数据库，不改变 nvim 的当前目录
+	  },
+    },
+    -- 如果你想禁用默认快捷键，可以设置 disable_maps = true
+    -- disable_maps = false,
+  },
+}
+
 local plugins = {
 	nvim_tree,
 	lualine,
@@ -433,6 +455,7 @@ local plugins = {
 	nvim_ufo,
 	signify,
 	fugitive,
+	gtags_cscope,
 }
 
 require("lazy").setup(plugins)
