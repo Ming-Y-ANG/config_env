@@ -71,5 +71,37 @@ npm install opencode-enhancer-plugin@latest
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
     "opencode-enhancer-plugin@latest"
-  ]
+  ],
+  "agent": {
+	  "enhancer": {
+		  "model": "kimi-for-coding/k2p5"
+	  },
+	  "ultraplan": {
+		  "model": "kimi-for-coding/k2p5"
+	  },
+	  "ask": {
+		  "model": "kimi-for-coding/k2p5"
+	  },
+	  "strategos": {
+		  "model": "kimi-for-coding/k2p5"
+	  },
+	  "explore-context": {
+		  "model": "kimi-for-coding/k2p5"
+	  },
+	  "explore-code": {
+		  "model": "kimi-for-coding/k2p5"
+	  },
+	  "explore-deps": {
+		  "model": "kimi-for-coding/k2p5"
+	  },
+	  "explore-tests": {
+		  "model": "kimi-for-coding/k2p5"
+	  },
+	  "review-plan": {
+		  "model": "kimi-for-coding/k2p5"
+	  },
+	  "strategos-interviewer": {
+		  "model": "kimi-for-coding/k2p5"
+	  }
+	}
 }
