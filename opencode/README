@@ -1,0 +1,3 @@
+opencode plugins
+npm install opencode-enhancer-plugin@latest
+#add opencode.json -> ~/.config/opencode/opencode.json 
