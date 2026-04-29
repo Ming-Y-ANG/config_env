@@ -26,7 +26,7 @@ version_lt() {
 }
 
 install_nodejs() {
-    local VERSION="v20.9.0"
+    local VERSION="v22.9.0"
     local PREFIX="/usr/local"
     local FORCE_INSTALL="${FORCE_NODE:-0}"
 
