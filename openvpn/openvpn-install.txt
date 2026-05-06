@@ -1,0 +1,26 @@
+# 1. 安装
+sudo apt update && sudo apt install -y openvpn easy-rsa
+
+# 2. 创建 Easy-RSA 工作目录（关键步骤）
+make-cadir ~/easy-rsa
+cd ~/easy-rsa
+
+# 3. 初始化 PKI 并创建 CA
+./easyrsa init-pki
+./easyrsa build-ca nopass        # 测试环境可不加密码
+
+# 4. 生成服务端证书
+./easyrsa gen-req server nopass
+./easyrsa sign-req server server
+./easyrsa gen-dh
+
+# 5. 生成客户端证书
+./easyrsa gen-req client1 nopass
+./easyrsa sign-req client client1
+
+# 6. 复制证书到 OpenVPN 目录
+sudo mkdir -p /etc/openvpn/server
+sudo cp pki/ca.crt pki/issued/server.crt pki/private/server.key pki/dh.pem /etc/openvpn/server/
+
+# 7. run
+openvpn --config <configfile>
