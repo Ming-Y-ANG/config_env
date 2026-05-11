@@ -1,0 +1,202 @@
+From b1df3f6569f54819093f5fc0baa98084cfdf70bf Mon Sep 17 00:00:00 2001
+From: yangming <yangming@inhand.com.cn>
+Date: Mon, 11 May 2026 13:51:14 +0800
+Subject: [PATCH] feat: add ramoops
+
+Signed-off-by: yangming <yangming@inhand.com.cn>
+---
+ .../arch/arm/boot/dts/qcom-ipq4019.dtsi       | 11 +++
+ qca/src/linux-4.4/fs/pstore/ram.c             | 95 ++++++++++++++++++-
+ target/linux/ipq806x/config-4.4               |  9 ++
+ 3 files changed, 113 insertions(+), 2 deletions(-)
+
+diff --git a/qca/src/linux-4.4/arch/arm/boot/dts/qcom-ipq4019.dtsi b/qca/src/linux-4.4/arch/arm/boot/dts/qcom-ipq4019.dtsi
+index 65d5937dc8..f87af2b33b 100644
+--- a/qca/src/linux-4.4/arch/arm/boot/dts/qcom-ipq4019.dtsi
++++ b/qca/src/linux-4.4/arch/arm/boot/dts/qcom-ipq4019.dtsi
+@@ -133,6 +133,17 @@
+ 			reg = <0x88000000 0x300000>;
+ 		};
+ 		/*- FIBOCOM -*/
++
++		ramoops@88300000 {
++			compatible = "ramoops";
++			reg = <0x88300000 0x100000>;    /* 1MB */
++			no-map;
++			record-size  = <0x20000>;       /* 128KB - panic/oops */
++			console-size = <0x20000>;       /* 128KB - dmesg */
++			ftrace-size  = <0x20000>;       /* 128KB - ftrace */
++			pmsg-size    = <0x20000>;       /* 128KB - user space */
++			ecc-size     = <16>;            /* RS ECC：4KB 16B */
++		};
+ 	};
+ 
+ 	clocks {
+diff --git a/qca/src/linux-4.4/fs/pstore/ram.c b/qca/src/linux-4.4/fs/pstore/ram.c
+index 905caba365..db0dea5a20 100644
+--- a/qca/src/linux-4.4/fs/pstore/ram.c
++++ b/qca/src/linux-4.4/fs/pstore/ram.c
+@@ -34,6 +34,9 @@
+ #include <linux/slab.h>
+ #include <linux/compiler.h>
+ #include <linux/pstore_ram.h>
++#include <linux/of.h>
++#include <linux/of_address.h>
++#include <linux/of_platform.h>
+ 
+ #define RAMOOPS_KERNMSG_HDR "===="
+ #define MIN_MEM_SIZE 4096UL
+@@ -371,6 +374,50 @@ static struct ramoops_context oops_cxt = {
+ 	},
+ };
+ 
++#ifdef CONFIG_OF
++static int ramoops_parse_dt(struct platform_device *pdev,
++		    struct ramoops_platform_data *pdata)
++{
++	struct device_node *np = pdev->dev.of_node;
++	struct resource res;
++	u32 val32;
++	int ret;
++
++	if (!np)
++		return -ENODEV;
++
++	ret = of_address_to_resource(np, 0, &res);
++	if (ret) {
++		dev_err(&pdev->dev, "failed to parse memory region\n");
++		return ret;
++	}
++
++	pdata->mem_address = res.start;
++	pdata->mem_size = resource_size(&res);
++
++	if (!of_property_read_u32(np, "record-size", &val32))
++		pdata->record_size = val32;
++	if (!of_property_read_u32(np, "console-size", &val32))
++		pdata->console_size = val32;
++	if (!of_property_read_u32(np, "ftrace-size", &val32))
++		pdata->ftrace_size = val32;
++	if (!of_property_read_u32(np, "pmsg-size", &val32))
++		pdata->pmsg_size = val32;
++	if (!of_property_read_u32(np, "dump-oops", &val32))
++		pdata->dump_oops = val32;
++	if (!of_property_read_u32(np, "ecc-size", &val32))
++		pdata->ecc_info.ecc_size = val32;
++
++	return 0;
++}
++#else
++static inline int ramoops_parse_dt(struct platform_device *pdev,
++			    struct ramoops_platform_data *pdata)
++{
++	return -ENODEV;
++}
++#endif
++
+ static void ramoops_free_przs(struct ramoops_context *cxt)
+ {
+ 	int i;
+@@ -470,6 +517,7 @@ static int ramoops_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+ 	struct ramoops_platform_data *pdata = pdev->dev.platform_data;
++	struct ramoops_platform_data dt_pdata;
+ 	struct ramoops_context *cxt = &oops_cxt;
+ 	size_t dump_mem_sz;
+ 	phys_addr_t paddr;
+@@ -481,8 +529,17 @@ static int ramoops_probe(struct platform_device *pdev)
+ 	if (cxt->max_dump_cnt)
+ 		goto fail_out;
+ 
+-	if (!pdata->mem_size || (!pdata->record_size && !pdata->console_size &&
+-			!pdata->ftrace_size && !pdata->pmsg_size)) {
++	if (!pdata && pdev->dev.of_node) {
++		memset(&dt_pdata, 0, sizeof(dt_pdata));
++		err = ramoops_parse_dt(pdev, &dt_pdata);
++		if (err)
++			goto fail_out;
++		pdata = &dt_pdata;
++	}
++
++	if (!pdata || !pdata->mem_size || (!pdata->record_size &&
++			!pdata->console_size && !pdata->ftrace_size &&
++			!pdata->pmsg_size)) {
+ 		pr_err("The memory size and the record/console size must be "
+ 			"non-zero\n");
+ 		goto fail_out;
+@@ -603,11 +660,22 @@ static int ramoops_remove(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_OF
++static struct of_device_id ramoops_of_match[] = {
++	{ .compatible = "ramoops", },
++	{ },
++};
++MODULE_DEVICE_TABLE(of, ramoops_of_match);
++#endif
++
+ static struct platform_driver ramoops_driver = {
+ 	.probe		= ramoops_probe,
+ 	.remove		= ramoops_remove,
+ 	.driver		= {
+ 		.name	= "ramoops",
++#ifdef CONFIG_OF
++		.of_match_table = ramoops_of_match,
++#endif
+ 	},
+ };
+ 
+@@ -646,8 +714,31 @@ static void ramoops_register_dummy(void)
+ 	}
+ }
+ 
++#ifdef CONFIG_OF
++static void __init ramoops_register_of(void)
++{
++	struct device_node *np;
++	struct platform_device *pdev;
++
++	np = of_find_compatible_node(NULL, NULL, "ramoops");
++	if (!np)
++		return;
++
++	pdev = of_platform_device_create(np, NULL, NULL);
++	of_node_put(np);
++
++	if (!pdev)
++		pr_err("failed to create platform device from DT\n");
++	else
++		pr_info("created platform device from device tree\n");
++}
++#else
++static inline void ramoops_register_of(void) { }
++#endif
++
+ static int __init ramoops_init(void)
+ {
++	ramoops_register_of();
+ 	ramoops_register_dummy();
+ 	return platform_driver_register(&ramoops_driver);
+ }
+diff --git a/target/linux/ipq806x/config-4.4 b/target/linux/ipq806x/config-4.4
+index 5b5df707f4..991caabd69 100644
+--- a/target/linux/ipq806x/config-4.4
++++ b/target/linux/ipq806x/config-4.4
+@@ -804,3 +804,12 @@ CONFIG_NETLINK_DIAG=y
+ CONFIG_CAN_MCP251XFD=y
+ # CONFIG_CAN_MCP251XFD_SANITY is not set
+ CONFIG_IP_PIMSM_V2=y
++CONFIG_PSTORE=y
++CONFIG_PSTORE_CONSOLE=y
++CONFIG_PSTORE_PMSG=y
++CONFIG_PSTORE_RAM=y
++CONFIG_REED_SOLOMON=y
++CONFIG_REED_SOLOMON_ENC8=y
++CONFIG_REED_SOLOMON_DEC8=y
++CONFIG_MAGIC_SYSRQ=y
++CONFIG_MAGIC_SYSRQ_DEFAULT_ENABLE=0x1
+-- 
+2.43.0
+

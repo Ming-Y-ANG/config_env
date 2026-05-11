@@ -1,0 +1,39 @@
+=======================内核配置===============================
+CONFIG_PSTORE=y
+CONFIG_PSTORE_RAM=y          # ramoops 核心驱动
+CONFIG_PSTORE_CONSOLE=y      # 可选：保存控制台日志
+CONFIG_PSTORE_FTRACE=y       # 可选：保存 ftrace 信息
+CONFIG_PSTORE_PMSG=y         # 可选：保存 pmsg（用户空间日志）
+CONFIG_REED_SOLOMON=y        # ECC
+CONFIG_REED_SOLOMON_ENC8=y   # ECC
+CONFIG_REED_SOLOMON_DEC8=y   # ECC
+CONFIG_MAGIC_SYSRQ=y         # kernel hack: echo c > proc/sysrq-trigger 可用于测试panic
+CONFIG_MAGIC_SYSRQ_DEFAULT_ENABLE=0x1
+=======================预留物理内存===========================
+ramoops 需要一块掉电不丢失或重启保留的 RAM 区域（通常是 DDR 的一段地址，靠硬件不掉电或 uboot 不清除来保留）
+方式 A：通过 Device Tree（推荐，嵌入式常用) -> 注意4.4内核 ramoops 驱动没有支持设备树的方式，需要手动添加支持
+/ {
+    reserved-memory {
+		...
+		ramoops@88300000 {
+			compatible = "ramoops";
+			reg = <0x88300000 0x100000>;    /* 1MB */
+			no-map;
+			record-size  = <0x20000>;       /* 128KB - panic/oops */
+			console-size = <0x20000>;       /* 128KB - dmesg */
+			ftrace-size  = <0x20000>;       /* 128KB - ftrace */
+			pmsg-size    = <0x20000>;       /* 128KB - user space */
+			ecc-size     = <16>;            /* RS ECC：4KB 16B */
+       };
+};
+cat /proc/iomem -> 查看预留内存有没有生效
+==============================================================
+方式 B：通过内核命令行（无设备树或临时测试）
+...
+=======================挂载 pstore 文件系统===========================
+mkdir -p /sys/fs/pstore
+mount -t pstore pstore /sys/fs/pstore
+崩溃重启后， /sys/fs/pstore/可能看到：
+ls /sys/fs/pstore/
+# dmesg-ramoops-0   console-ramoops-0   ftrace-ramoops-0
+可添加一个启动脚本将文件备份到emmc上
