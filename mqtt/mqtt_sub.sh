@@ -5,7 +5,7 @@
 num_args=$#
 
 usage() {
-    echo "bad args, Usage: $0 <server> <port> {local|3rd} {cert|psk|none} {summary|obd|gnss|motion|io|cellular|userdata|1-wire|forward|all}"
+    echo "bad args, Usage: $0 <server> <port> {local|3rd} {cert|psk|none} {group|summary|obd|gnss|motion|io|cellular|userdata|1-wire|forward|all}"
     exit 1
 }
 # 检查是否有参数传入
@@ -77,6 +77,9 @@ for arg in "$@"; do
 			;;
 		forward) 
 			[ $mode == 'local' ] && topic+='-t v1/forward/info ' || topic+='-t v1/+/forward/info '
+			;;
+		group) 
+			[ $mode == 'local' ] && topic+='-t v1/group/set/resp' || topic+='-t v1/+/group/set/resp'
 			;;
 		all) 
 			[ $mode == 'local' ] && {
