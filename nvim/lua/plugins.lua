@@ -436,6 +436,50 @@ local gtags_cscope = {
   },
 }
 
+local render_markdown = {
+  'MeanderingProgrammer/render-markdown.nvim',
+  dependencies = {
+    'nvim-treesitter/nvim-treesitter',
+    'nvim-tree/nvim-web-devicons', -- 可选，用于图标
+  },
+  ft = { "markdown", "codecompanion" },
+  opts = {
+	  heading = {
+		  sign = false,          -- 关闭左侧符号列的标记
+		  width = 'block',       -- 标题背景色铺满整行
+		  min_width = 80,
+	  },
+	  code = {
+		  sign = false,
+		  width = 'block',
+		  left_pad = 2,
+		  right_pad = 2,
+	  },
+	  bullet = {
+		  left_pad = 0,
+		  right_pad = 0,
+	  },
+	  checkbox = {
+		  checked = { icon = '✅ ' },
+		  unchecked = { icon = '⬜ ' },
+	  },
+	  quote = {
+		  repeat_linebreak = true,
+	  },
+	  pipe_table = {
+		  preset = 'round',      -- 表格圆角风格
+	  },
+	  win_options = {
+		  conceallevel = {
+			  rendered = 3,        -- 渲染时隐藏 markdown 语法符号
+		  },
+	  },
+	  anti_conceal = {
+		  enabled = true,        -- 光标所在行显示原始语法，方便编辑
+	  },
+  },
+}
+
 local plugins = {
 	nvim_tree,
 	lualine,
@@ -456,6 +500,7 @@ local plugins = {
 	signify,
 	fugitive,
 	gtags_cscope,
+	render_markdown,
 }
 
 require("lazy").setup(plugins)
