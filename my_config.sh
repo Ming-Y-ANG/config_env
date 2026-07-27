@@ -26,7 +26,7 @@ version_lt() {
 }
 
 install_nodejs() {
-    local VERSION="v22.9.0"
+    local VERSION="v24.15.0"
     local PREFIX="/usr/local"
     local FORCE_INSTALL="${FORCE_NODE:-0}"
 
@@ -119,7 +119,7 @@ install_nodejs() {
 
 
 npm_update() {
-    local REQ_VER="9.5.1"
+    local REQ_VER="11.12.1"
 
     if ! program_exists npm; then
         err "npm not found, please check node install..."
