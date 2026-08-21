@@ -198,26 +198,14 @@ login_vps() {
 	echo "result: $result"
 }
 
-main() {
-    if [ $# -eq 0 ]; then
-        echo "usage: $0 start|stop|restart ..."
-        exit 0
-    fi
-
-	case $1 in
-		start)
-			#login_vps
-			start
-			;;
-		stop)
-			stop
-			;;
-		restart)
-			restart
-			;;
-		*)
-			echo "$1 not suooprt"
-			;;
-	esac
+usage() {
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
 }
-main "$@"
+
+case "$1" in
+    start)   start ;;
+    stop)    stop ;;
+    restart) restart ;;
+    *)       usage ;;
+esac
