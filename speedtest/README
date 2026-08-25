@@ -1,0 +1,39 @@
+install TURN server and enable enablePacketLoss test:
+1. apt install -y coturn
+
+2. generate turnserver key:
+openssl rand -hex 32 > .env
+
+3. /etc/turnserver.conf:
+listening-port=3478
+realm=speedtest
+use-auth-secret
+static-auth-secret=生成的密钥
+total-quota=100
+stale-nonce=600
+no-multicast-peers
+min-port=49152
+max-port=49252
+simple-log
+log-file=/var/log/turnserver.log
+
+4. /etc/default/coturn:
+TURNSERVER_ENABLED=1
+
+5. restart coturn
+
+6.
+sudo ufw allow 3478/udp && sudo ufw allow 3478/tcp
+sudo ufw allow 49152:49252/udp 
+
+7. index.html:
+enablePacketLoss: true,
+turnServerUri: '你的VPS域名或IP:3478',
+
+8. build.sh
+
+9. check TURN env key is valid:
+'curl http://localhost:65000/turn-creds' or 'docker exec 容器名 env | grep TURN_SECRET'
+
+10. check turn server is working:
+turnutils_uclient -y -u speedtest -W 'turn.key' vps_ip

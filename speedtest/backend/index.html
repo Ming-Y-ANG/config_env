@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>网速测试 · Speed Test</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg-soft: #0e1322;
+    --card: #131829;
+    --card-2: #161c31;
+    --border: #232c47;
+    --text: #e9edf6;
+    --text-2: #8f9ab3;
+    --text-3: #5d6680;
+    --orange: #f6821f;
+    --orange-2: #fbad41;
+    --blue: #4c9aff;
+    --green: #2fd27d;
+    --red: #ef4c5d;
+    --yellow: #eab308;
+    --radius: 16px;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(246,130,31,.10), transparent 60%),
+      radial-gradient(900px 500px at 10% -10%, rgba(76,154,255,.10), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+      "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 64px; }
+
+  /* ---------- Header ---------- */
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 2px 26px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .logo {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--orange), var(--orange-2));
+    display: grid; place-items: center; font-size: 20px; box-shadow: var(--shadow);
+  }
+  .brand h1 { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
+  .brand small { display: block; color: var(--text-2); font-size: 12px; font-weight: 500; margin-top: 2px; }
+  .badge {
+    font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text-2);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-2); }
+  .badge.running .dot { background: var(--orange); animation: pulse 1s infinite; }
+  .badge.done .dot { background: var(--green); }
+  .badge.error .dot { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+  /* ---------- Notices ---------- */
+  .notice {
+    display: none; align-items: flex-start; gap: 10px;
+    border: 1px solid rgba(234,179,8,.35); background: rgba(234,179,8,.08);
+    color: #f4d35e; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; line-height: 1.55;
+    margin-bottom: 18px;
+  }
+  .notice.show { display: flex; }
+  .notice.err { border-color: rgba(239,76,93,.4); background: rgba(239,76,93,.09); color: #ff9aa6; }
+  .notice code { background: rgba(255,255,255,.10); padding: 1px 6px; border-radius: 5px; font-size: 12px; white-space: nowrap; }
+
+  /* ---------- Hero gauge ---------- */
+  .hero {
+    background: linear-gradient(180deg, var(--card-2), var(--card));
+    border: 1px solid var(--border); border-radius: 22px;
+    padding: 34px 34px 26px; box-shadow: var(--shadow);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ""; position: absolute; inset: -40% 55% 40% -10%;
+    background: radial-gradient(closest-side, rgba(246,130,31,.14), transparent);
+    pointer-events: none;
+  }
+  .hero-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 28px; }
+  .speed-block { min-width: 260px; flex: 1; }
+  .phase-label {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; color: var(--orange-2);
+    text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 10px;
+  }
+  .phase-label.idle { color: var(--text-2); }
+  .speed-value { display: flex; align-items: baseline; gap: 10px; }
+  .speed-value .num {
+    font-size: clamp(56px, 9vw, 92px); font-weight: 800; line-height: 1;
+    font-variant-numeric: tabular-nums; letter-spacing: -2px;
+  }
+  .speed-value .unit { font-size: 22px; color: var(--text-2); font-weight: 600; }
+  .speed-sub { color: var(--text-2); font-size: 13.5px; margin-top: 12px; min-height: 20px; }
+
+  .hero-side { display: flex; flex-direction: column; gap: 14px; align-items: flex-end; }
+  .btn {
+    appearance: none; border: none; cursor: pointer; font-family: inherit;
+    font-size: 15.5px; font-weight: 700; padding: 14px 34px; border-radius: 999px;
+    background: linear-gradient(135deg, var(--orange), var(--orange-2));
+    color: #1a1206; box-shadow: 0 8px 24px rgba(246,130,31,.35);
+    transition: transform .12s ease, box-shadow .12s ease, opacity .12s;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(246,130,31,.45); }
+  .btn:active { transform: translateY(0); }
+  .btn.ghost {
+    background: transparent; color: var(--text); border: 1px solid var(--border); box-shadow: none;
+  }
+  .btn.ghost:hover { border-color: var(--text-2); }
+  .progress {
+    width: 240px; max-width: 60vw; height: 6px; border-radius: 999px;
+    background: rgba(255,255,255,.07); overflow: hidden;
+  }
+  .progress > i {
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--orange), var(--orange-2));
+    border-radius: 999px; transition: width .35s ease;
+  }
+  .progress-text { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+  /* ---------- Live chart ---------- */
+  .chart-card {
+    margin-top: 18px; background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 18px 10px;
+  }
+  .chart-head { display: flex; justify-content: space-between; align-items: center; padding: 2px 6px 10px; }
+  .chart-head h3 { font-size: 14px; font-weight: 700; }
+  .legend { display: flex; gap: 16px; font-size: 12.5px; color: var(--text-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+  .legend .d i { background: var(--orange); }
+  .legend .u i { background: var(--blue); }
+  #chart { width: 100%; height: 180px; display: block; }
+
+  /* ---------- Metric cards ---------- */
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-top: 18px; }
+  .metric {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px 18px 16px; position: relative; overflow: hidden;
+  }
+  .metric .label { font-size: 12.5px; color: var(--text-2); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .metric .label .ic { font-size: 14px; }
+  .metric .val { font-size: 32px; font-weight: 800; margin-top: 10px; font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+  .metric .val small { font-size: 13px; color: var(--text-2); font-weight: 600; margin-left: 4px; letter-spacing: 0; }
+  .metric .extra { font-size: 12px; color: var(--text-2); margin-top: 8px; min-height: 16px; font-variant-numeric: tabular-nums; }
+  .metric::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: transparent; }
+  .metric.dl::after { background: var(--orange); }
+  .metric.ul::after { background: var(--blue); }
+  .metric.lat::after { background: var(--green); }
+  .metric.jit::after { background: var(--yellow); }
+  .metric.pl::after { background: #b07cff; }
+
+  /* ---------- Details / analysis ---------- */
+  .details { margin-top: 26px; display: none; }
+  .details.show { display: block; animation: fadeUp .45s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px);} to { opacity:1; transform: none;} }
+  .section-title { font-size: 17px; font-weight: 800; margin: 6px 2px 14px; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .title-actions { display: flex; gap: 8px; order: 2; }
+  .btn-sm {
+    appearance: none; cursor: pointer; font-family: inherit;
+    font-size: 12.5px; font-weight: 700; padding: 7px 14px; border-radius: 9px;
+    background: rgba(246,130,31,.12); color: var(--orange-2); border: 1px solid rgba(246,130,31,.3);
+    transition: background .12s ease, transform .12s ease;
+  }
+  .btn-sm:hover { background: rgba(246,130,31,.22); transform: translateY(-1px); }
+  .btn-sm.muted { background: rgba(255,255,255,.05); color: var(--text-2); border-color: var(--border); }
+  .btn-sm.muted:hover { background: rgba(255,255,255,.09); }
+  .hist-empty { color: var(--text-3); font-size: 13px; padding: 8px 2px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1.2fr .8fr; gap: 14px; }
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .panel h4 { font-size: 13.5px; font-weight: 700; color: var(--text-2); margin-bottom: 16px; text-transform: uppercase; letter-spacing: .8px; }
+
+  .aim-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px dashed var(--border); }
+  .aim-row:last-child { border-bottom: none; }
+  .aim-ic { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,.05); display: grid; place-items: center; font-size: 17px; }
+  .aim-info { flex: 1; }
+  .aim-name { font-size: 14.5px; font-weight: 700; }
+  .aim-desc { font-size: 12px; color: var(--text-2); margin-top: 3px; }
+  .aim-score { text-align: right; min-width: 96px; }
+  .aim-cls { font-size: 13.5px; font-weight: 800; }
+  .aim-pts { font-size: 11.5px; color: var(--text-2); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .aim-bar { height: 4px; border-radius: 4px; background: rgba(255,255,255,.08); margin-top: 7px; overflow: hidden; }
+  .aim-bar i { display: block; height: 100%; border-radius: 4px; }
+
+  .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+  .kv .item .k { font-size: 12px; color: var(--text-2); margin-bottom: 5px; }
+  .kv .item .v { font-size: 14.5px; font-weight: 700; word-break: break-all; }
+
+  /* latency strip */
+  #latChart { width: 100%; height: 90px; display: block; margin-top: 6px; }
+
+  /* table */
+  .table-wrap { overflow-x: auto; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 10px 12px; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { color: var(--text-2); font-weight: 600; font-size: 12px; border-bottom: 1px solid var(--border); }
+  tbody tr { border-bottom: 1px solid rgba(35,44,71,.5); }
+  tbody tr:hover { background: rgba(255,255,255,.025); }
+  .tag { font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 6px; }
+  .tag.d { background: rgba(246,130,31,.15); color: var(--orange-2); }
+  .tag.u { background: rgba(76,154,255,.15); color: var(--blue); }
+  .num-best { color: var(--green); font-weight: 800; }
+
+  footer { margin-top: 40px; text-align: center; color: var(--text-3, #5d6680); font-size: 12.5px; line-height: 1.8; }
+  footer a { color: var(--text-2); text-decoration: none; border-bottom: 1px dotted var(--text-2); }
+
+  @media (max-width: 860px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .hero { padding: 26px 20px; }
+    .hero-side { align-items: flex-start; width: 100%; }
+    .progress { width: 100%; max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">⚡</div>
+      <div>
+        <h1>网速测试</h1>
+        <small>INTERNET SPEED TEST</small>
+      </div>
+    </div>
+    <div class="badge" id="badge"><span class="dot"></span><span id="badgeText">就绪</span></div>
+  </header>
+
+  <div class="notice" id="noticeWarn"></div>
+  <div class="notice err" id="noticeErr"></div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-row">
+      <div class="speed-block">
+        <div class="phase-label idle" id="phaseLabel">● 等待开始</div>
+        <div class="speed-value">
+          <span class="num" id="heroNum">--</span>
+          <span class="unit" id="heroUnit">Mbps</span>
+        </div>
+        <div class="speed-sub" id="heroSub">点击「开始测速」测量你的网络连接质量</div>
+      </div>
+      <div class="hero-side">
+        <button class="btn" id="btnMain">开始测速</button>
+        <div class="progress"><i id="progressBar"></i></div>
+        <div class="progress-text" id="progressText">0%</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live chart -->
+  <section class="chart-card">
+    <div class="chart-head">
+      <h3>实时速率曲线</h3>
+      <div class="legend">
+        <span class="d"><i></i>下载</span>
+        <span class="u"><i></i>上传</span>
+      </div>
+    </div>
+    <canvas id="chart"></canvas>
+  </section>
+
+  <!-- Metric cards -->
+  <section class="metrics">
+    <div class="metric dl">
+      <div class="label"><span class="ic">⬇️</span>下载速度</div>
+      <div class="val" id="mDownload">--<small>Mbps</small></div>
+      <div class="extra" id="mDownloadSub"></div>
+    </div>
+    <div class="metric ul">
+      <div class="label"><span class="ic">⬆️</span>上传速度</div>
+      <div class="val" id="mUpload">--<small>Mbps</small></div>
+      <div class="extra" id="mUploadSub"></div>
+    </div>
+    <div class="metric lat">
+      <div class="label"><span class="ic">📶</span>延迟 (Ping)</div>
+      <div class="val" id="mLatency">--<small>ms</small></div>
+      <div class="extra" id="mLatencySub"></div>
+    </div>
+    <div class="metric jit">
+      <div class="label"><span class="ic">〰️</span>抖动</div>
+      <div class="val" id="mJitter">--<small>ms</small></div>
+      <div class="extra" id="mJitterSub"></div>
+    </div>
+    <div class="metric pl" id="mLossCard" style="display:none">
+      <div class="label"><span class="ic">📡</span>丢包率</div>
+      <div class="val" id="mLoss">--<small>%</small></div>
+      <div class="extra" id="mLossSub"></div>
+    </div>
+  </section>
+
+  <!-- Analysis (after finish) -->
+  <section class="details" id="details">
+    <div class="section-title">数据分析
+      <span class="title-actions">
+        <button class="btn-sm" id="btnExportDetail">📄 导出本次明细 CSV</button>
+      </span>
+    </div>
+    <div class="grid-2">
+      <div class="panel">
+        <h4>网络质量评分 (AIM)</h4>
+        <div id="aimList"></div>
+        <h4 style="margin-top:22px">空闲延迟分布</h4>
+        <canvas id="latChart"></canvas>
+      </div>
+      <div class="panel">
+        <h4>连接信息</h4>
+        <div class="kv" id="connInfo"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h4>测量点明细</h4>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>方向</th><th>数据大小</th><th>速率</th><th>耗时</th><th>TTFB</th><th>服务端处理</th>
+            </tr>
+          </thead>
+          <tbody id="measTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- History (persisted in localStorage) -->
+  <section class="details" id="historySection">
+    <div class="section-title">历史记录
+      <span class="title-actions">
+        <button class="btn-sm" id="btnExportHistory">📊 导出全部历史 CSV</button>
+        <button class="btn-sm muted" id="btnClearHistory">清空</button>
+      </span>
+    </div>
+    <div class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>时间</th><th>测速节点</th><th>下载</th><th>上传</th><th>延迟</th><th>抖动</th><th>丢包</th><th>流媒体</th><th>游戏</th><th>通话</th>
+            </tr>
+          </thead>
+          <tbody id="historyTable"></tbody>
+        </table>
+      </div>
+      <div class="hist-empty" id="historyEmpty" style="display:none">暂无历史记录，完成一次测速后自动保存</div>
+    </div>
+  </section>
+
+  <footer>
+    测速引擎：<a href="https://github.com/cloudflare/speedtest" target="_blank" rel="noopener">@cloudflare/speedtest</a>
+    &nbsp;·&nbsp; 基于 PerformanceResourceTiming API 测量 &nbsp;·&nbsp; <span id="apiEndpoint"></span>
+  </footer>
+</div>
+
+<script type="module">
+/* ============================================================
+ * 配置区 —— 部署到你的 VPS 时只需关注这里
+ * ------------------------------------------------------------
+ * apiBase: 留空字符串 '' 表示「自动」：
+ *   1. 优先使用与页面同源的后端（推荐：Node 服务同时托管本页面，
+ *      并实现 GET /__down?bytes=N 与 POST /__up 两个端点）；
+ *   2. 若同源探测失败，自动回退到 Cloudflare 官方演示节点。
+ * 如果你的后端在其它域名/端口，直接填写完整地址，例如：
+ *   apiBase: 'https://speed.example.com' 或 'http://1.2.3.4:8080'
+ * ============================================================ */
+const CONFIG = {
+  apiBase: '',
+  // 丢包测试（packetLoss）需要通过 WebRTC 向 TURN 服务器发 UDP 探测包，
+  // 需自建 TURN 服务器（如 coturn）。两项都配置后才会启用：
+  enablePacketLoss: true,
+  turnServerUri: '47.108.191.116:3478',         // 自建 TURN 地址，如 'speed.example.com:3478' 或 '1.2.3.4:3478'
+};
+
+import SpeedTest from 'https://cdn.jsdelivr.net/npm/@cloudflare/speedtest@1.13.1/dist/speedtest.js';
+
+/* ---------------- 工具 ---------------- */
+const $ = (id) => document.getElementById(id);
+const fmtMbps = (bps) => {
+  if (bps == null || !isFinite(bps)) return '--';
+  const mbps = bps / 1e6;
+  return mbps >= 100 ? Math.round(mbps).toString() : mbps.toFixed(1);
+};
+const fmtMs = (ms) => (ms == null || !isFinite(ms)) ? '--' : (ms >= 100 ? Math.round(ms) : +ms.toFixed(1)).toString();
+const fmtBytes = (b) => b >= 1e6 ? (b / 1e6).toFixed(b >= 1e8 ? 0 : 1) + ' MB' : Math.round(b / 1e3) + ' KB';
+
+/* ---------------- 状态 ---------------- */
+let engine = null;
+let phase = 'idle';           // idle | latency | download | upload | done | error
+const series = { download: [], upload: [] };  // {t, mbps}
+let t0 = 0;
+let seenDown = 0, seenUp = 0;
+let connMeta = {};            // cf-meta-* 头信息
+let apiBase = '';
+
+/* 默认测量序列（与引擎默认一致，可按需裁剪；packetLoss 由开关控制） */
+function buildMeasurements() {
+  const list = [
+    { type: 'latency', numPackets: 1 },
+    { type: 'download', bytes: 1e5, count: 1, bypassMinDuration: true },
+    { type: 'latency', numPackets: 20 },
+    { type: 'download', bytes: 1e5, count: 9 },
+    { type: 'download', bytes: 1e6, count: 8 },
+    { type: 'upload', bytes: 1e5, count: 8 },
+    { type: 'upload', bytes: 1e6, count: 6 },
+    { type: 'download', bytes: 1e7, count: 6 },
+    { type: 'upload', bytes: 1e7, count: 4 },
+    { type: 'download', bytes: 2.5e7, count: 4 },
+    { type: 'upload', bytes: 2.5e7, count: 4 },
+    { type: 'download', bytes: 1e8, count: 3 },
+    { type: 'upload', bytes: 5e7, count: 3 },
+    { type: 'download', bytes: 2.5e8, count: 2 },
+  ];
+  if (CONFIG.enablePacketLoss && CONFIG.turnServerUri) {
+    list.splice(6, 0, { type: 'packetLoss', numPackets: 1e3, responsesWaitTime: 3000 });
+  }
+  return list;
+}
+const EXPECTED = (() => {
+  let d = 0, u = 0, l = 0;
+  for (const m of buildMeasurements()) {
+    if (m.type === 'download') d += m.count;
+    else if (m.type === 'upload') u += m.count;
+    else if (m.type === 'latency') l += m.numPackets;
+    else if (m.type === 'packetLoss') l += 10; // 丢包阶段计入少量进度权重
+  }
+  return { d, u, l, total: d + u + l };
+})();
+
+/* ---------------- API 端点探测 ---------------- */
+function parseMetaHeaders(h) {
+  const keys = ['cf-meta-ip', 'cf-meta-city', 'cf-meta-country', 'cf-meta-asn', 'cf-meta-colo', 'cf-meta-timezone'];
+  const meta = {};
+  keys.forEach(k => { const v = h.get(k); if (v) meta[k] = v; });
+  return meta;
+}
+
+async function resolveApiBase() {
+  if (CONFIG.apiBase) return { base: CONFIG.apiBase, demo: false, crossOrigin: true };
+  try {
+    const r = await fetch(location.origin + '/__down?bytes=0', { cache: 'no-store' });
+    if (r.ok) {
+      return { base: '', demo: false, crossOrigin: false, meta: parseMetaHeaders(r.headers) };
+    }
+  } catch (_) { /* 同源无后端 */ }
+  return { base: 'https://speed.cloudflare.com', demo: true, crossOrigin: true };
+}
+
+async function fetchMeta(base) {
+  try {
+    const url = base + '/__down?bytes=0';
+    const r = await fetch(url, { cache: 'no-store' });
+    connMeta = parseMetaHeaders(r.headers);
+    // 跨域时校验详细时序是否可用（TAO 头本身不可被 JS 读取，
+    // 需通过 PerformanceResourceTiming 条目判断是否被浏览器隐藏）
+    if (base && location.origin !== base) {
+      await new Promise(res => setTimeout(res, 80));
+      const entries = performance.getEntriesByName(url);
+      const e = entries[entries.length - 1];
+      if (e && e.requestStart === 0 && e.responseStart === 0) {
+        showWarn('当前后端未返回 <b>Timing-Allow-Origin</b> 响应头，浏览器已隐藏跨域请求的详细计时数据，' +
+          '速率/延迟将无法计算。请在 Node 后端响应中添加：<code>Timing-Allow-Origin: *</code> 和 <code>Access-Control-Allow-Origin: *</code>。');
+      }
+    }
+  } catch (_) { /* 忽略 */ }
+}
+
+/* ---------------- 提示 ---------------- */
+function showWarn(html) { const n = $('noticeWarn'); n.innerHTML = '⚠️&nbsp; ' + html; n.classList.add('show'); }
+function showErr(html) { const n = $('noticeErr'); n.innerHTML = '⛔&nbsp; ' + html; n.classList.add('show'); }
+function clearNotices() { ['noticeWarn', 'noticeErr'].forEach(id => { $(id).classList.remove('show'); $(id).innerHTML = ''; }); }
+
+/* ---------------- 状态/徽章/进度 ---------------- */
+function setBadge(state, text) {
+  const b = $('badge');
+  b.className = 'badge' + (state ? ' ' + state : '');
+  $('badgeText').textContent = text;
+}
+function setPhase(p, label, idle) {
+  phase = p;
+  const el = $('phaseLabel');
+  el.textContent = '● ' + label;
+  el.classList.toggle('idle', !!idle);
+}
+function setProgress(pct) {
+  $('progressBar').style.width = pct + '%';
+  $('progressText').textContent = Math.round(pct) + '%';
+}
+function updateProgress() {
+  const done = seenDown + seenUp + latDoneCount;
+  setProgress(Math.min(100, (done / EXPECTED.total) * 100));
+}
+
+/* ---------------- 大数字与指标卡 ---------------- */
+function setHero(bps, unit = 'Mbps') {
+  $('heroNum').textContent = bps == null ? '--' : fmtMbps(bps);
+  $('heroUnit').textContent = unit;
+}
+function renderMetricCards(r) {
+  const dPts = r.getDownloadBandwidthPoints();
+  const uPts = r.getUploadBandwidthPoints();
+  // 引擎汇总值无效（极速网络下采样过短被判无效）时回退到采样峰值
+  const dlRaw = r.getDownloadBandwidth();
+  const ulRaw = r.getUploadBandwidth();
+  const dl = (dlRaw != null && dlRaw > 0) ? dlRaw : (dPts.length ? Math.max(...dPts.map(p => p.bps)) : null);
+  const ul = (ulRaw != null && ulRaw > 0) ? ulRaw : (uPts.length ? Math.max(...uPts.map(p => p.bps)) : null);
+  const lat = r.getUnloadedLatency();
+  const jit = r.getUnloadedJitter();
+  const dLat = r.getDownLoadedLatency();
+  const uLat = r.getUpLoadedLatency();
+
+  $('mDownload').innerHTML = fmtMbps(dl) + '<small>Mbps</small>';
+  $('mUpload').innerHTML = fmtMbps(ul) + '<small>Mbps</small>';
+  $('mLatency').innerHTML = fmtMs(lat) + '<small>ms</small>';
+  $('mJitter').innerHTML = fmtMs(jit) + '<small>ms</small>';
+
+  $('mDownloadSub').textContent = dPts.length ? `${dPts.length} 次采样 · 峰值 ${fmtMbps(Math.max(...dPts.map(p => p.bps)))} Mbps` : '';
+  $('mUploadSub').textContent = uPts.length ? `${uPts.length} 次采样 · 峰值 ${fmtMbps(Math.max(...uPts.map(p => p.bps)))} Mbps` : '';
+  const latPts = r.getUnloadedLatencyPoints();
+  $('mLatencySub').textContent = latPts.length ? `${latPts.length} 次 Ping · 最小 ${fmtMs(Math.min(...latPts))} ms` : '';
+  const showD = dLat != null && dLat > 0, showU = uLat != null && uLat > 0;
+  $('mJitterSub').textContent = (showD || showU)
+    ? `负载延迟 ↓${showD ? fmtMs(dLat) : '--'} / ↑${showU ? fmtMs(uLat) : '--'} ms` : '';
+
+  // 丢包率（仅启用 TURN 丢包测试且成功时显示）
+  const plDetails = r.getPacketLossDetails();
+  const pl = r.getPacketLoss();
+  if (plDetails && !plDetails.error && pl != null && isFinite(pl)) {
+    $('mLossCard').style.display = '';
+    $('mLoss').innerHTML = (pl * 100).toFixed(1) + '<small>%</small>';
+    $('mLossSub').textContent = plDetails.numMessagesSent
+      ? `${plDetails.numMessagesSent} 个 UDP 探测包 · 丢失 ${plDetails.lostMessages}` : '';
+  }
+}
+
+/* ---------------- 实时曲线图 ---------------- */
+const chart = $('chart');
+const ctx = chart.getContext('2d');
+function fitCanvas(c) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = c.getBoundingClientRect();
+  c.width = rect.width * dpr; c.height = rect.height * dpr;
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { w: rect.width, h: rect.height };
+}
+function drawChart() {
+  const { w, h } = fitCanvas(chart);
+  ctx.clearRect(0, 0, w, h);
+  const padL = 44, padR = 10, padT = 12, padB = 20;
+  const all = [...series.download, ...series.upload];
+  const maxV = Math.max(10, ...all.map(p => p.mbps)) * 1.15;
+  const tEnd = Math.max(5, (performance.now() - t0) / 1000);
+  const x = (t) => padL + (w - padL - padR) * (t / tEnd);
+  const y = (v) => h - padB - (h - padT - padB) * (v / maxV);
+
+  // 网格与 Y 轴刻度
+  ctx.font = '10px system-ui'; ctx.fillStyle = '#5d6680'; ctx.strokeStyle = 'rgba(255,255,255,.06)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const v = maxV * i / 4, yy = y(v);
+    ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(w - padR, yy); ctx.stroke();
+    ctx.fillText((v >= 100 ? Math.round(v) : v.toFixed(0)) + ' M', 6, yy + 3);
+  }
+  // X 轴时间刻度
+  for (let t = 0; t <= tEnd; t += Math.ceil(tEnd / 6)) {
+    ctx.fillText(t + 's', x(t) - 6, h - 6);
+  }
+
+  const drawLine = (pts, color, fill) => {
+    if (pts.length < 1) return;
+    ctx.beginPath();
+    pts.forEach((p, i) => { const px = x(p.t), py = y(p.mbps); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+    if (fill) {
+      const last = pts[pts.length - 1];
+      ctx.lineTo(x(last.t), h - padB); ctx.lineTo(x(pts[0].t), h - padB); ctx.closePath();
+      const grad = ctx.createLinearGradient(0, padT, 0, h - padB);
+      grad.addColorStop(0, color + '44'); grad.addColorStop(1, color + '00');
+      ctx.fillStyle = grad; ctx.fill();
+    }
+    // 端点高亮
+    const lp = pts[pts.length - 1];
+    ctx.beginPath(); ctx.arc(x(lp.t), y(lp.mbps), 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+  };
+  drawLine(series.download, '#f6821f', true);
+  drawLine(series.upload, '#4c9aff', true);
+}
+
+/* ---------------- 延迟分布图 ---------------- */
+function drawLatencyChart(points) {
+  const c = $('latChart');
+  const g = c.getContext('2d');
+  const { w, h } = fitCanvas(c);
+  g.clearRect(0, 0, w, h);
+  if (!points || !points.length) { g.fillStyle = '#5d6680'; g.font = '12px system-ui'; g.fillText('暂无数据', 8, 20); return; }
+  const max = Math.max(...points) * 1.15;
+  const bw = Math.max(3, (w - 20) / points.length - 3);
+  points.forEach((v, i) => {
+    const bh = (h - 24) * (v / max);
+    g.fillStyle = 'rgba(47,210,125,.75)';
+    const bx = 10 + i * ((w - 20) / points.length);
+    if (g.roundRect) { g.beginPath(); g.roundRect(bx, h - 14 - bh, bw, bh, 2); g.fill(); }
+    else g.fillRect(bx, h - 14 - bh, bw, bh);
+  });
+  g.fillStyle = '#8f9ab3'; g.font = '11px system-ui';
+  g.fillText(`共 ${points.length} 次 · 中位 ${fmtMs(points.slice().sort((a,b)=>a-b)[Math.floor(points.length/2)])} ms · 最大 ${fmtMs(max/1.15)} ms`, 10, 12);
+}
+
+/* ---------------- AIM 评分 ---------------- */
+const AIM_META = {
+  streaming: { name: '视频流媒体', desc: '4K/8K 视频播放、视频会议观看', ic: '🎬' },
+  gaming:    { name: '在线游戏',   desc: '对延迟与稳定性敏感的实时对战', ic: '🎮' },
+  rtc:       { name: '实时通话',   desc: '语音/视频通话、在线会议', ic: '🎧' },
+};
+const CLS_CN = { bad: '很差', poor: '较差', average: '一般', good: '良好', great: '极佳' };
+const CLS_COLOR = { bad: '#ef4c5d', poor: '#f97316', average: '#eab308', good: '#2fd27d', great: '#10d6a3' };
+const CLS_MAX_PTS = { streaming: 80, gaming: 40, rtc: 60 }; // 经验上限，仅用于进度条比例
+
+function renderAim(scores) {
+  const box = $('aimList');
+  box.innerHTML = '';
+  if (!scores || !Object.keys(scores).length) {
+    box.innerHTML = '<div style="color:#5d6680;font-size:13px;line-height:1.7">本次测试的有效负载样本不足，未生成评分。<br>完整测速（含大文件下载/上传阶段）后会自动计算。</div>';
+    return;
+  }
+  for (const [key, meta] of Object.entries(AIM_META)) {
+    const s = scores[key];
+    if (!s) continue;
+    const color = CLS_COLOR[s.classificationName] || '#8f9ab3';
+    const pct = Math.min(100, (s.points / CLS_MAX_PTS[key]) * 100);
+    const row = document.createElement('div');
+    row.className = 'aim-row';
+    row.innerHTML = `
+      <div class="aim-ic">${meta.ic}</div>
+      <div class="aim-info">
+        <div class="aim-name">${meta.name}</div>
+        <div class="aim-desc">${meta.desc}</div>
+        <div class="aim-bar"><i style="width:${pct}%;background:${color}"></i></div>
+      </div>
+      <div class="aim-score">
+        <div class="aim-cls" style="color:${color}">${CLS_CN[s.classificationName] || s.classificationName}</div>
+        <div class="aim-pts">${s.points} pts</div>
+      </div>`;
+    box.appendChild(row);
+  }
+}
+
+/* ---------------- 连接信息 ---------------- */
+function renderConnInfo(summary) {
+  const box = $('connInfo');
+  const items = [];
+  const M = connMeta;
+  if (M['cf-meta-ip']) items.push(['你的 IP', M['cf-meta-ip']]);
+  const loc = [M['cf-meta-city'], M['cf-meta-country']].filter(Boolean).join(', ');
+  if (loc) items.push(['位置', loc]);
+  if (M['cf-meta-asn']) items.push(['ASN / 运营商', 'AS' + M['cf-meta-asn']]);
+  if (M['cf-meta-colo']) items.push(['测速节点', M['cf-meta-colo']]);
+  if (M['cf-meta-timezone']) items.push(['时区', M['cf-meta-timezone']]);
+  if (summary.totalDurationMs) items.push(['测试总耗时', (summary.totalDurationMs / 1000).toFixed(1) + ' s']);
+  items.push(['测速 API', apiBase || location.origin + '（同源）']);
+  if (!items.length) items.push(['测速 API', apiBase || location.origin]);
+  box.innerHTML = items.map(([k, v]) =>
+    `<div class="item"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+}
+
+/* ---------------- 测量点明细表 ---------------- */
+function renderTable(r) {
+  const dPts = r.getDownloadBandwidthPoints().map(p => ({ ...p, dir: 'd' }));
+  const uPts = r.getUploadBandwidthPoints().map(p => ({ ...p, dir: 'u' }));
+  const all = [...dPts, ...uPts].sort((a, b) => a.measTime - b.measTime);
+  if (!all.length) { $('measTable').innerHTML = '<tr><td colspan="6" style="text-align:left;color:#5d6680">暂无数据</td></tr>'; return; }
+  const bestD = Math.max(...dPts.map(p => p.bps), -1);
+  const bestU = Math.max(...uPts.map(p => p.bps), -1);
+  $('measTable').innerHTML = all.map(p => {
+    const isBest = (p.dir === 'd' && p.bps === bestD) || (p.dir === 'u' && p.bps === bestU);
+    return `<tr>
+      <td><span class="tag ${p.dir}">${p.dir === 'd' ? '下载' : '上传'}</span></td>
+      <td>${fmtBytes((p.transferSize > 0 && p.dir === 'd') ? p.transferSize : p.bytes)}</td>
+      <td class="${isBest ? 'num-best' : ''}">${fmtMbps(p.bps)} Mbps</td>
+      <td>${fmtMs(p.duration)} ms</td>
+      <td>${fmtMs(p.ping)} ms</td>
+      <td>${(p.serverTime != null && p.serverTime >= 0) ? fmtMs(p.serverTime) + ' ms' : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ---------------- 历史记录与导出 ---------------- */
+const HISTORY_KEY = 'speedtest_history_v1';
+const MAX_HISTORY = 100;
+let lastRecord = null;   // 本次测试摘要记录
+let lastDetail = null;   // 本次测量点明细行
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+  catch { return []; }
+}
+function saveHistory(list) {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(-MAX_HISTORY))); } catch (_) {}
+}
+function fmtTime(ts) {
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function collectRecord(results) {
+  const s = results.getSummary();
+  const dPts = results.getDownloadBandwidthPoints();
+  const uPts = results.getUploadBandwidthPoints();
+  // 极速网络下引擎汇总值可能无效，回退采样峰值
+  const dl = s.download > 0 ? s.download : (dPts.length ? Math.max(...dPts.map(p => p.bps)) : 0);
+  const ul = s.upload > 0 ? s.upload : (uPts.length ? Math.max(...uPts.map(p => p.bps)) : 0);
+  const scores = results.getScores() || {};
+  const g = (k) => scores[k] ? `${CLS_CN[scores[k].classificationName] || scores[k].classificationName}(${scores[k].points}分)` : '';
+  return {
+    ts: Date.now(),
+    api: apiBase || location.origin,
+    download: dl > 0 ? +(dl / 1e6).toFixed(1) : '',
+    upload: ul > 0 ? +(ul / 1e6).toFixed(1) : '',
+    latency: s.latency != null ? +s.latency.toFixed(1) : '',
+    jitter: s.jitter != null ? +s.jitter.toFixed(1) : '',
+    downLoadedLatency: s.downLoadedLatency > 0 ? +s.downLoadedLatency.toFixed(1) : '',
+    upLoadedLatency: s.upLoadedLatency > 0 ? +s.upLoadedLatency.toFixed(1) : '',
+    packetLoss: (() => {
+      const d = results.getPacketLossDetails();
+      return (d && !d.error && d.packetLoss != null) ? +(d.packetLoss * 100).toFixed(2) : '';
+    })(),
+    streaming: g('streaming'), gaming: g('gaming'), rtc: g('rtc'),
+    durationS: s.totalDurationMs ? +(s.totalDurationMs / 1000).toFixed(1) : '',
+  };
+}
+
+function collectDetailRows(results) {
+  const dPts = results.getDownloadBandwidthPoints().map(p => ({ ...p, dir: '下载' }));
+  const uPts = results.getUploadBandwidthPoints().map(p => ({ ...p, dir: '上传' }));
+  return [...dPts, ...uPts].sort((a, b) => a.measTime - b.measTime).map(p => [
+    p.dir,
+    fmtBytes((p.transferSize > 0 && p.dir === '下载') ? p.transferSize : p.bytes),
+    +(p.bps / 1e6).toFixed(1),
+    +p.duration.toFixed(1),
+    +p.ping.toFixed(1),
+    (p.serverTime != null && p.serverTime >= 0) ? +p.serverTime.toFixed(2) : ''
+  ]);
+}
+
+function renderHistory() {
+  const list = loadHistory();
+  const sec = $('historySection');
+  if (!list.length) { sec.classList.remove('show'); return; }
+  sec.classList.add('show');
+  $('historyEmpty').style.display = 'none';
+  $('historyTable').innerHTML = list.slice().reverse().map(r => `<tr>
+    <td style="text-align:left">${fmtTime(r.ts)}</td>
+    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${r.api}</td>
+    <td>${r.download !== '' ? r.download + ' Mbps' : '—'}</td>
+    <td>${r.upload !== '' ? r.upload + ' Mbps' : '—'}</td>
+    <td>${r.latency !== '' ? r.latency + ' ms' : '—'}</td>
+    <td>${r.jitter !== '' ? r.jitter + ' ms' : '—'}</td>
+    <td>${(r.packetLoss !== '' && r.packetLoss != null) ? r.packetLoss + ' %' : '—'}</td>
+    <td>${r.streaming || '—'}</td><td>${r.gaming || '—'}</td><td>${r.rtc || '—'}</td>
+  </tr>`).join('');
+}
+
+/* ---------------- CSV 导出 ---------------- */
+function csvCell(v) { return '"' + String(v ?? '').replace(/"/g, '""') + '"'; }
+function downloadCsv(filename, rows) {
+  // BOM 保证 Excel 打开中文不乱码
+  const csv = '\ufeff' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function fileStamp() { return fmtTime(Date.now()).replace(/[-: ]/g, ''); }
+
+function exportHistory() {
+  const list = loadHistory();
+  if (!list.length) return;
+  const rows = [['时间', '测速节点', '下载(Mbps)', '上传(Mbps)', '延迟(ms)', '抖动(ms)', '丢包率(%)',
+    '负载延迟-下载(ms)', '负载延迟-上传(ms)', '流媒体', '游戏', '实时通话', '总耗时(s)']];
+  list.forEach(r => rows.push([fmtTime(r.ts), r.api, r.download, r.upload, r.latency, r.jitter, r.packetLoss,
+    r.downLoadedLatency, r.upLoadedLatency, r.streaming, r.gaming, r.rtc, r.durationS]));
+  downloadCsv(`测速历史对比_${fileStamp()}.csv`, rows);
+}
+
+function exportDetail() {
+  if (!lastRecord || !lastDetail) return;
+  const r = lastRecord;
+  const rows = [
+    ['测速结果明细'],
+    ['测试时间', fmtTime(r.ts)],
+    ['测速节点', r.api],
+    ['下载速度(Mbps)', r.download],
+    ['上传速度(Mbps)', r.upload],
+    ['延迟(ms)', r.latency],
+    ['抖动(ms)', r.jitter],
+    ['负载延迟-下载(ms)', r.downLoadedLatency],
+    ['负载延迟-上传(ms)', r.upLoadedLatency],
+    ['丢包率(%)', r.packetLoss],
+    ['AIM-视频流媒体', r.streaming],
+    ['AIM-在线游戏', r.gaming],
+    ['AIM-实时通话', r.rtc],
+    ['测试总耗时(s)', r.durationS],
+    [],
+    ['方向', '数据大小', '速率(Mbps)', '耗时(ms)', 'TTFB(ms)', '服务端处理(ms)'],
+    ...lastDetail
+  ];
+  downloadCsv(`测速明细_${fileStamp()}.csv`, rows);
+}
+
+$('btnExportHistory').addEventListener('click', exportHistory);
+$('btnExportDetail').addEventListener('click', exportDetail);
+$('btnClearHistory').addEventListener('click', () => {
+  if (!confirm('确定清空所有历史记录？此操作不可恢复。')) return;
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+});
+
+/* ---------------- 测速引擎集成 ---------------- */
+let latDoneCount = 0;
+let chartTimer = null;
+
+function resetState() {
+  phase = 'idle';
+  series.download = []; series.upload = [];
+  seenDown = 0; seenUp = 0; latDoneCount = 0;
+  t0 = performance.now();
+  clearNotices();
+  setHero(null);
+  setProgress(0);
+  setPhase('idle', '准备中…', true);
+  $('heroSub').textContent = '正在初始化测速引擎…';
+  $('details').classList.remove('show');
+  ['mDownload', 'mUpload', 'mLatency', 'mJitter'].forEach(id => $(id).innerHTML = '--<small>' + ({ mDownload: 'Mbps', mUpload: 'Mbps', mLatency: 'ms', mJitter: 'ms' })[id] + '</small>');
+  ['mDownloadSub', 'mUploadSub', 'mLatencySub', 'mJitterSub', 'mLossSub'].forEach(id => $(id).textContent = '');
+  $('mLossCard').style.display = 'none';
+  drawChart();
+}
+
+function ingestNewPoints(r) {
+  const now = (performance.now() - t0) / 1000;
+  const dPts = r.getDownloadBandwidthPoints();
+  const uPts = r.getUploadBandwidthPoints();
+  for (; seenDown < dPts.length; seenDown++) {
+    const p = dPts[seenDown];
+    series.download.push({ t: now, mbps: p.bps / 1e6 });
+  }
+  for (; seenUp < uPts.length; seenUp++) {
+    const p = uPts[seenUp];
+    series.upload.push({ t: now, mbps: p.bps / 1e6 });
+  }
+  // 大数字跟随当前阶段
+  if (phase === 'upload' && uPts.length) setHero(uPts[uPts.length - 1].bps);
+  else if (phase === 'download' && dPts.length) setHero(dPts[dPts.length - 1].bps);
+}
+
+async function startTest() {
+  if (engine && engine.isRunning) return;
+  resetState();
+  setBadge('running', '测速中');
+  $('btnMain').textContent = '停止';
+  $('apiEndpoint').textContent = '';
+
+  try {
+    // 每次开始前探测一次端点（同源或官方回退）
+    const resolved = await resolveApiBase();
+    apiBase = resolved.base;
+    $('apiEndpoint').textContent = '测速节点：' + (apiBase || location.origin + '（同源后端）');
+    if (resolved.demo) {
+      showWarn('未检测到与页面同源的测速后端（/__down），当前正使用 <b>Cloudflare 官方演示节点</b>。' +
+        '部署到你的 VPS 后，将本页面交由 Node 后端托管（或配置 CONFIG.apiBase）即可使用你自己的服务器。');
+      connMeta = {};
+      await fetchMeta(apiBase);
+    } else if (resolved.crossOrigin) {
+      connMeta = {};
+      await fetchMeta(apiBase);
+    } else if (resolved.meta) {
+      connMeta = resolved.meta;
+    }
+
+    engine = new SpeedTest({
+      autoStart: false,
+      downloadApiUrl: (apiBase || '') + '/__down',
+      uploadApiUrl: (apiBase || '') + '/__up',
+      measurements: buildMeasurements(),
+      logAimApiUrl: null,          // 不把结果上报给第三方
+      logMeasurementApiUrl: null,
+      // 丢包测试：TURN 服务器配置（凭证由后端 /turn-creds 动态签发）
+      ...(CONFIG.enablePacketLoss && CONFIG.turnServerUri ? {
+        turnServerUri: CONFIG.turnServerUri,
+        turnServerCredsApiUrl: (apiBase || '') + '/turn-creds',
+      } : {}),
+    });
+  } catch (e) {
+    setBadge('error', '错误');
+    showErr('初始化失败：' + (e && e.message || e));
+    $('btnMain').textContent = '开始测速';
+    return;
+  }
+
+  engine.onRunningChange = (running) => {
+    if (running) { setBadge('running', '测速中'); $('btnMain').textContent = '停止'; }
+    else if (!engine.isFinished) { setBadge('', '已暂停'); $('btnMain').textContent = '继续'; }
+  };
+
+  engine.onResultsChange = ({ type }) => {
+    const r = engine.results;
+    // 阶段推进
+    if (type === 'download' && phase !== 'upload') { setPhase('download', '下载测速中'); }
+    else if (type === 'upload') { setPhase('upload', '上传测速中'); }
+    else if (type === 'packetLoss') { setPhase('packetloss', '丢包测量中'); }
+    else if ((type === 'latency') && phase !== 'download' && phase !== 'upload') {
+      setPhase('latency', '延迟测量中');
+      $('heroUnit').textContent = 'Mbps';
+    }
+    if (type === 'latency') {
+      latDoneCount = r.getUnloadedLatencyPoints().length;
+      const lat = r.getUnloadedLatency();
+      if (lat != null && phase === 'latency') {
+        $('heroNum').textContent = fmtMs(lat);
+        $('heroUnit').textContent = 'ms';
+        $('heroSub').textContent = '空闲往返延迟（TTFB）';
+      }
+    }
+    if (phase === 'download') $('heroSub').textContent = '正在测量下行带宽…';
+    if (phase === 'upload') $('heroSub').textContent = '正在测量上行带宽…';
+    ingestNewPoints(r);
+    renderMetricCards(r);
+    updateProgress();
+    drawChart();
+  };
+
+  engine.onError = (err) => {
+    const msg = String(err);
+    console.error('speedtest error:', msg);
+    if (msg.toLowerCase().includes('packet loss')) {
+      // 丢包测量失败（TURN 不可达/凭证失败/浏览器不支持 WebRTC）：
+      // 引擎会自动跳过该项继续后续测量，这里仅温和提示，不中断、不惊吓
+      showWarn('丢包率测量未完成（TURN 服务器未就绪或网络不支持 WebRTC），其余指标不受影响。');
+      return;
+    }
+    clearInterval(chartTimer);
+    showErr('测量过程出错：' + msg);
+    setBadge('error', '错误');
+    $('btnMain').textContent = '重新测试';
+  };
+
+  engine.onFinish = (results) => {
+    clearInterval(chartTimer);
+    setPhase('done', '测试完成');
+    setBadge('done', '已完成');
+    $('btnMain').textContent = '重新测试';
+    setProgress(100);
+    const summary = results.getSummary();
+    // 大数字回退：引擎汇总值无效（如极速网络下所有采样 <10ms 被判无效）时用采样峰值
+    const dlPts = results.getDownloadBandwidthPoints();
+    const finalDl = summary.download > 0 ? summary.download
+      : (dlPts.length ? Math.max(...dlPts.map(p => p.bps || 0)) : 0);
+    setHero(finalDl > 0 ? finalDl : (summary.upload > 0 ? summary.upload : null));
+    $('heroSub').textContent = '测试完成 · 以下为详细数据分析';
+    renderMetricCards(results);
+    renderAim(results.getScores());
+    renderConnInfo(summary);
+    renderTable(results);
+    drawLatencyChart(results.getUnloadedLatencyPoints());
+    // 保存到历史记录（供页面内对比与 CSV 导出）
+    lastRecord = collectRecord(results);
+    lastDetail = collectDetailRows(results);
+    const hist = loadHistory();
+    hist.push(lastRecord);
+    saveHistory(hist);
+    renderHistory();
+    $('details').classList.add('show');
+    drawChart();
+    $('details').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  t0 = performance.now();
+  chartTimer = setInterval(drawChart, 250); // 让曲线随时间轴滚动
+  engine.play();
+}
+
+function stopTest() {
+  if (engine && engine.isRunning) {
+    engine.pause();
+    clearInterval(chartTimer);
+    setPhase('idle', '已停止', true);
+    setBadge('', '已停止');
+    $('btnMain').textContent = '重新测速';
+    $('heroSub').textContent = '测试已手动停止';
+  }
+}
+
+/* ---------------- 入口 ---------------- */
+$('btnMain').addEventListener('click', () => {
+  if (engine && engine.isRunning) stopTest();
+  else startTest();
+});
+window.addEventListener('resize', () => { drawChart(); });
+
+// 页面加载后自动开始（与 speed.cloudflare.com 行为一致）
+drawChart();
+renderHistory();   // 有历史记录时先行展示
+startTest();
+</script>
+</body>
+</html>
+
