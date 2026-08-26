@@ -380,8 +380,8 @@ const CONFIG = {
   apiBase: '',
   // 丢包测试（packetLoss）需要通过 WebRTC 向 TURN 服务器发 UDP 探测包，
   // 需自建 TURN 服务器（如 coturn）。两项都配置后才会启用：
-  enablePacketLoss: true,
-  turnServerUri: '47.108.191.116:3478',         // 自建 TURN 地址，如 'speed.example.com:3478' 或 '1.2.3.4:3478'
+  enablePacketLoss: false,
+  turnServerUri: '',         // 自建 TURN 地址，如 'speed.example.com:3478' 或 '1.2.3.4:3478'
 };
 
 import SpeedTest from 'https://cdn.jsdelivr.net/npm/@cloudflare/speedtest@1.13.1/dist/speedtest.js';
@@ -836,11 +836,13 @@ $('btnClearHistory').addEventListener('click', () => {
 /* ---------------- 测速引擎集成 ---------------- */
 let latDoneCount = 0;
 let chartTimer = null;
+let lastLatencyPoints = null; // 空闲延迟分布数据（#details 显示后再绘制）
 
 function resetState() {
   phase = 'idle';
   series.download = []; series.upload = [];
   seenDown = 0; seenUp = 0; latDoneCount = 0;
+  lastLatencyPoints = null;
   t0 = performance.now();
   clearNotices();
   setHero(null);
@@ -979,7 +981,7 @@ async function startTest() {
     renderAim(results.getScores());
     renderConnInfo(summary);
     renderTable(results);
-    drawLatencyChart(results.getUnloadedLatencyPoints());
+    lastLatencyPoints = results.getUnloadedLatencyPoints();
     // 保存到历史记录（供页面内对比与 CSV 导出）
     lastRecord = collectRecord(results);
     lastDetail = collectDetailRows(results);
@@ -987,7 +989,10 @@ async function startTest() {
     hist.push(lastRecord);
     saveHistory(hist);
     renderHistory();
+    // 先让 #details 可见，再绘制其内部的 Canvas：
+    // 隐藏元素 getBoundingClientRect() 返回 0×0，此时绘制会得到空白图
     $('details').classList.add('show');
+    requestAnimationFrame(() => drawLatencyChart(lastLatencyPoints));
     drawChart();
     $('details').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
@@ -1013,7 +1018,11 @@ $('btnMain').addEventListener('click', () => {
   if (engine && engine.isRunning) stopTest();
   else startTest();
 });
-window.addEventListener('resize', () => { drawChart(); });
+window.addEventListener('resize', () => {
+  drawChart();
+  // 窗口尺寸变化时重绘延迟分布图（仅当详情区已显示且有数据）
+  if (lastLatencyPoints && $('details').classList.contains('show')) drawLatencyChart(lastLatencyPoints);
+});
 
 // 页面加载后自动开始（与 speed.cloudflare.com 行为一致）
 drawChart();
