@@ -1,0 +1,76 @@
+1. 系统依赖
+sudo apt update
+sudo apt install -y --no-install-recommends \
+  git cmake ninja-build gperf ccache dfu-util device-tree-compiler \
+  wget xz-utils file make gcc gcc-multilib g++-multilib \
+  python3-dev python3-venv python3-tk libsdl2-dev libmagic1
+
+2. 虚拟环境 
+python3 -m venv ~/zephyr-venv
+source ~/zephyr-venv/bin/activate
+pip install -U pip west
+
+3. 工作区创建并初始化
+mkdir -p ~/zephyr-ws/app
+cd ~/zephyr-ws
+cat > app/west.yml << 'EOF'
+manifest:
+  version: "0.13"
+  defaults:
+    remote: upstream
+  remotes:
+    - name: upstream
+      url-base: https://github.com/zephyrproject-rtos
+  projects:
+    - name: zephyr
+      revision: v4.4.1        # 固定版本，不会漂移
+      import:
+        name-allowlist:        # 只拉这几个模块，其余全部不要
+          - cmsis_6            # ARM Cortex-M 必需
+          - hal_gigadevice     # GD32 HAL 必需
+EOF
+
+west init -l app                # 以本地 app 为 manifest
+west update -o=--depth=1        # 获取所有项目源码, 浅克隆，不拉历史提交
+west zephyr-export              # 导出 Zephyr CMake 包 -> ~/.cmake/packages/
+pip install -r zephyr/scripts/requirements.txt  # 安装 Python 依赖
+
+zephyr-ws/
+├── app/west.yml        # 你的仓库（后续放应用代码和板级移植）
+├── zephyr/             # v4.4.1 源码
+└── modules/
+    ├── hal/cmsis_6/
+    └── hal/gigadevice/
+
+4. toolchain  
+cd ~/zephyr-ws
+west sdk install --install-dir ~/zephyr-sdk --toolchain arm-zephyr-eabi
+GD32F303 是 Cortex-M4F，arm-zephyr-eabi 就够了,如果 west sdk 不可用，就去 sdk-ng 的 GitHub releases 手动下载 1.0.x 的 minimal 包
+解压后运行 ./setup.sh -t arm-zephyr-eabi -c
+# app/tools/setup_sdk.sh
+#!/bin/bash
+SDK_VERSION="1.0.0"   # 与 zephyr v4.4.1 配套的版本，写死
+wget "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${SDK_VERSION}/zephyr-sdk-${SDK_VERSION}_linux-x86_64_minimal.tar.xz"
+tar -xf zephyr-sdk-*.tar.xz -C ~/
+~/zephyr-sdk-${SDK_VERSION}/setup.sh -t arm-zephyr-eabi -c
+
+5. 剥离 git 信息，做离线归档 
+cd ~/zephyr-ws
+find . -type d -name ".git" -prune -exec rm -rf {} +
+# 打包一份作为离线母版，以后随取随用
+tar -cJf ~/zephyr-4.4.1-gd32-min.tar.xz \
+  --exclude='__pycache__' --exclude='*.pyc' .
+注意：剥掉 .git 之后不要再执行 west update（它依赖 git），west build 不受影响。以后要改版本或加模块，从归档重新来一遍即可。
+
+6. 构建
+Zephyr 主线已有 GD32F403 的支持，先用它验证工具链、构建系统是否正常：
+cd ~/zephyr-ws
+west build -b gd32f403z_eval zephyr/samples/hello_world -p always
+能编译出 build/zephyr/zephyr.elf 就说明环境 OK 了
+如果 sdk 安装在非默认路径(~/zephyr-sdk) 
+export ZEPHYR_SDK_INSTALL_DIR=/path/to/your/sdk
+west build -b your_board your_app
+
+7. 清理
+west build -t clean  # 轻度清理 只修改了 .c 或 .h 源文件，没有改动 Kconfig、设备树（.dts）或 CMake 列表文件
+west build -t pristine 或 rm -rf build  # 深度清理 修改了 Kconfig、设备树文件、CMakeLists.txt，或者切换了开发板（-b）后需要彻底重置
