@@ -15,7 +15,7 @@ mkdir -p ~/zephyr-ws/app
 cd ~/zephyr-ws
 cat > app/west.yml << 'EOF'
 manifest:
-  version: "0.13"
+  version: "0.13"	# west 解析器语法规则支持的版本
   defaults:
     remote: upstream
   remotes:
@@ -31,7 +31,7 @@ manifest:
 EOF
 
 west init -l app                # 以本地 app 为 manifest
-west update -o=--depth=1        # 获取所有项目源码, 浅克隆，不拉历史提交
+west update -o=--depth=1        # 获取所有项目源码, 浅克隆，不拉历史提交,如果某个仓库失败可以直接手动git克隆
 west zephyr-export              # 导出 Zephyr CMake 包 -> ~/.cmake/packages/
 pip install -r zephyr/scripts/requirements.txt  # 安装 Python 依赖
 
@@ -74,3 +74,16 @@ west build -b your_board your_app
 7. 清理
 west build -t clean  # 轻度清理 只修改了 .c 或 .h 源文件，没有改动 Kconfig、设备树（.dts）或 CMake 列表文件
 west build -t pristine 或 rm -rf build  # 深度清理 修改了 Kconfig、设备树文件、CMakeLists.txt，或者切换了开发板（-b）后需要彻底重置
+
+8. 仓库管理
+cd ~/zephyr-ws/app
+
+cat > .gitignore << 'EOF'
+build/
+__pycache__/
+*.pyc
+EOF
+
+git init
+git add -A
+git commit -m "chore: 初始化 Zephyr 4.4.2 工作区模板（hello_world 冒烟通过）"

@@ -1,0 +1,15 @@
+命令	功能	示例
+west init	创建工作区，克隆 Manifest 仓库	west init -m <URL> --mr <branch> <dir>
+west update	克隆/更新所有项目	west update 或 west update <project>
+west list	列出所有项目	west list
+west diff	显示工作区所有项目的本地修改	west diff
+west status	显示各项目状态	west status
+west forall	在所有项目中执行同一命令	west forall -c "git branch"
+west manifest	检查和操作 Manifest	west manifest --freeze
+west build	构建 Zephyr 应用	west build -b <board> <app_dir>
+west flash	烧录固件到目标板	west flash
+west debug	启动 GDB 调试会话	west debug
+west attach	连接调试器	west attach
+west boards	列出所有支持的开发板	west boards -n nrf52840
+west sdk	管理 Zephyr SDK	west sdk install
+west build -t menuconfig	打开 Kconfig 图形化配置界面	west build -t menuconfig
