@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <time.h>
 #include <signal.h>
+#include <termios.h>
 #include <ih_serial.h>
 #include <syslog.h>
 #include <stdarg.h>
@@ -383,119 +384,134 @@ static int poll_ubx_data(int fd, void *msg, FILE *fp, int timeout)
 {
 #define UBX_SYNC_CHAR1 0xb5
 #define UBX_SYNC_CHAR2 0x62
+#define UBX_FRAME_MAX  2048
 
 	struct timespec ts = {0};
-	unsigned char buf[2048] = {0};
-	unsigned char msg_buf[2048] = {0};
-	unsigned int ts_ms = 0, ts_end_ms = 0;;
-	int bytes_read = 0;
-	fd_set read_fds;
-	int select_result = -1;
 	struct ubx_cfg_poll *poll = (struct ubx_cfg_poll *)msg;
+	fd_set read_fds;
+	int done = 0;
+	int cksum_err_seen = 0;
+	unsigned char frame[UBX_FRAME_MAX];
+	int frame_len = 0;
+	int expected_len = 0;
+	int state = 0; // 0: hunt sync1, 1: hunt sync2, 2: collect header, 3: collect payload+cksum
 
-	unsigned char  msg_class = poll->msg[2];
-	unsigned char  msg_id = poll->msg[3];
-	unsigned short msg_len = ((poll->msg[5] << 8) | poll->msg[4]) + 8;
+	unsigned char msg_class = poll->msg[2];
+	unsigned char msg_id = poll->msg[3];
+	unsigned short poll_len = ((poll->msg[5] << 8) | poll->msg[4]) + 8;
+	unsigned int ts_ms = 0, ts_end_ms = 0;
 
 	if(frontend){
 		LOG_DB("Polling: %s - ", poll->desc);
-		for(int i = 0; i < msg_len; i++){
+		for(int i = 0; i < poll_len; i++){
 			LOG_DB(" %02X", poll->msg[i]);
 		}
 		LOG_DB("\n");
 	}
 
-	if(write(fd, poll->msg, msg_len) != msg_len){
+	//drain any stale input before sending this poll so we don't mix responses
+	tcflush(fd, TCIFLUSH);
+
+	if(write(fd, poll->msg, poll_len) != poll_len){
 		LOG_DB("write data failed\n");
 		return 0;
 	}
+
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	ts_ms = ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 	ts_end_ms = ts_ms + timeout;
-	int done = 0;
-	int msg_size = 0;
-	int recv_size = 0;
-	int write_size = 0;
+
 	do{
 		FD_ZERO(&read_fds);
 		FD_SET(fd, &read_fds);
-		struct timeval timeout = {.tv_sec = 0, .tv_usec = 100*1000};
-		select_result = select(fd + 1, &read_fds, NULL, NULL, &timeout);
-		if (select_result < 0) {
+		struct timeval tv = {.tv_sec = 0, .tv_usec = 100*1000};
+		int select_result = select(fd + 1, &read_fds, NULL, NULL, &tv);
+		if(select_result < 0){
 			if(errno != EINTR && errno != EAGAIN){
 				LOG_DB("select error(%s)\n", strerror(errno));
 				break;
 			}
-		} else if (select_result == 0) {
+		}else if(select_result == 0){
 			if(frontend) LOG_DB("select timeout.\n");
-		} else {
-			if (FD_ISSET(fd, &read_fds)) {
-				bytes_read = read(fd, buf, sizeof(buf) - 1);
-				unsigned short offset = 0;
-				while(bytes_read > 0){
-					if(msg_size > 0){//read continue
-						int bytes_write = 0;
-						if(bytes_read + write_size >= msg_size){
-							bytes_write = msg_size - write_size;
-						}else {
-							bytes_write = bytes_read;
+		}else if(FD_ISSET(fd, &read_fds)){
+			unsigned char buf[2048];
+			int bytes_read = read(fd, buf, sizeof(buf));
+			if(bytes_read <= 0){
+				if(bytes_read < 0 && errno != EAGAIN && errno != EINTR){
+					LOG_DB("read error(%s)\n", strerror(errno));
+				}
+			}else{
+				for(int i = 0; i < bytes_read && !done; i++){
+					unsigned char b = buf[i];
+
+					switch(state){
+					case 0:
+						if(b == UBX_SYNC_CHAR1){
+							frame_len = 0;
+							frame[frame_len++] = b;
+							state = 1;
 						}
-						memcpy(msg_buf + write_size, buf, bytes_write);
-						write_size += bytes_write; 
-						if(write_size >= msg_size){
-							if(do_checksum(&msg_buf[2], msg_size - 2)){
-								write_msg_to_file(fp, poll->desc, &msg_buf[2], write_size - 4);
-								done = POLL_MSG_OK;
-							}else {
-								done = POLL_MSG_CKSUM_ERR;
-							}
-						}
-						bytes_read -= bytes_write;
 						break;
-					}else {//find response
-						if(buf[offset] == UBX_SYNC_CHAR1 && buf[offset + 1] == UBX_SYNC_CHAR2){
-							ubx_pro_msg *rmsg = (ubx_pro_msg *)(buf + offset);
-							if(rmsg->class_id == msg_class && rmsg->msg_id == msg_id){
-								if(frontend) LOG_DB("... successfully completed!\n");
-								if(fp){
-									msg_size = rmsg->payload_len + 8;  
-									recv_size = bytes_read - offset; 
-									if(recv_size >= msg_size){
-										write_size = msg_size;
-									}else {
-										write_size = recv_size;
-									}
-									memcpy(msg_buf, buf + offset, write_size);
-									if(write_size >= msg_size){
-										if(do_checksum(&msg_buf[2], msg_size - 2)){
-											write_msg_to_file(fp, poll->desc, &msg_buf[2], write_size - 4);
-											done = POLL_MSG_OK;
-										}else {
-											done = POLL_MSG_CKSUM_ERR;
-										}
-									}
-									offset += write_size;
-									bytes_read -= offset;
-								}
-								break;
-							}else if(rmsg->class_id == 0x05 && rmsg->msg_id == 0x00){ //NAK
-								if(rmsg->payload[0] == msg_class && rmsg->payload[1] == msg_id){
-									if(frontend) LOG_DB("... message rejected!\n");
-									done = 2;
-									break;
-								}
+					case 1:
+						if(b == UBX_SYNC_CHAR2){
+							frame[frame_len++] = b;
+							state = 2;
+						}else{
+							state = 0;
+						}
+						break;
+					case 2:
+						frame[frame_len++] = b;
+						if(frame_len >= 6){
+							expected_len = (frame[5] << 8 | frame[4]) + 8;
+							if(expected_len > UBX_FRAME_MAX || expected_len < 8){
+								//bogus length, drop frame and keep hunting
+								state = 0;
+								frame_len = 0;
+							}else{
+								state = 3;
 							}
 						}
-						offset++;
-						bytes_read--;
+						break;
+					case 3:
+						frame[frame_len++] = b;
+						if(frame_len >= expected_len){
+							unsigned char class = frame[2];
+							unsigned char id = frame[3];
+
+							if(class == 0x05 && id == 0x00){ //NAK
+								if(expected_len >= 10 && frame[6] == msg_class && frame[7] == msg_id){
+									if(frontend) LOG_DB("... message rejected!\n");
+									done = POLL_MSG_NAK;
+								}
+							}else if(class == msg_class && id == msg_id){
+								if(do_checksum(&frame[2], expected_len - 2)){
+									if(frontend) LOG_DB("... successfully completed!\n");
+									write_msg_to_file(fp, poll->desc, &frame[2], expected_len - 4);
+									done = POLL_MSG_OK;
+								}else{
+									//matching frame but checksum bad: keep hunting,
+									//a valid retransmission may follow in same read
+									cksum_err_seen = 1;
+								}
+							}
+							//frame processed or not interested: hunt next
+							state = 0;
+							frame_len = 0;
+						}
+						break;
 					}
 				}
 			}
 		}
-		memset(buf, 0, sizeof(buf));
+
 		clock_gettime(CLOCK_MONOTONIC, &ts);
 		ts_ms = ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 	}while(ts_ms < ts_end_ms && !done);
+
+	if(!done && cksum_err_seen){
+		return POLL_MSG_CKSUM_ERR;
+	}
 
 	return done;
 }
@@ -511,7 +527,7 @@ static void dump_ubx_cfg(int fd, char *file, int modem)
 		if(modem == 9){
 			cfg_poll = gl_ubx_m9_cfg_poll;
 			poll_len = sizeof(gl_ubx_m9_cfg_poll)/sizeof(gl_ubx_m9_cfg_poll[0]);
-			timeout = 1500;
+			timeout = 3000;
 		}else{
 			cfg_poll = gl_ubx_m8_cfg_poll;
 			poll_len = sizeof(gl_ubx_m8_cfg_poll)/sizeof(gl_ubx_m8_cfg_poll[0]);
@@ -847,6 +863,7 @@ void usage(char *name)
 			"  -f                   front run\n"
 			"  -s <log_size>        log file size(default 20M)\n"
 			"  -p <log dir>         log dir(default /var/app/gnss)\n"
+			"  -a                   ant status detect\n"
 			, name);
 }
 
@@ -860,8 +877,9 @@ int main(int argc, char **argv)
 	int modem = 8; //M8
 	char dev[32] = "/dev/ttyXRUSB7";
 	pthread_t tid_log = 0, tid_ant = 0;
+	int ant_record = 0;
 
-	while ((c = getopt(argc, argv,  "d:b:hm:fs:p:")) != -1) {
+	while ((c = getopt(argc, argv,  "d:b:hm:fs:p:a")) != -1) {
 		switch (c) {
 			case 'h':
 				usage(argv[0]);
@@ -883,6 +901,9 @@ int main(int argc, char **argv)
 				break;
 			case 'p':
 				snprintf(fpath, sizeof(fpath), "%s", optarg);
+				break;
+			case 'a':
+				ant_record = 1;
 				break;
 			default:
 				printf( "ignore unknown arg: %c %s", c, optarg ? optarg : "");
@@ -910,7 +931,7 @@ int main(int argc, char **argv)
 	signal(SIGCHLD, SIG_IGN);
     
 	ubx_debug_message(gl_serial_fd);
-	usleep(10000);
+	usleep(500000);
 	//dump cfg
 	snprintf(cfg_file, sizeof(cfg_file), "%s/ubx.cfg", fpath);
 	LOG_DB("dump cfg -> %s\n", cfg_file);
@@ -918,7 +939,7 @@ int main(int argc, char **argv)
 	//log record
 	LOG_DB("dump log -> %s(file limit: size -> %dM, num -> %d)\n", fpath, log_size / 1024 / 1024, MAX_FILES);
 	pthread_create(&tid_log, NULL, gnss_log_record, fpath);
-	if(modem == 9){//M9
+	if(ant_record){
 		pthread_create(&tid_ant, NULL, ant_status_record, fpath);
 	}
 
