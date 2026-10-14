@@ -1,0 +1,74 @@
+#!/bin/bash
+
+cenv() {
+	unset ANTHROPIC_MODEL
+	unset ANTHROPIC_API_KEY
+	unset ANTHROPIC_AUTH_TOKEN
+	unset ANTHROPIC_DEFAULT_FABLE_MODEL
+	unset ANTHROPIC_DEFAULT_OPUS_MODEL
+	unset ANTHROPIC_DEFAULT_SONNET_MODEL
+	unset ANTHROPIC_DEFAULT_HAIKU_MODEL
+	unset CLAUDE_CODE_SUBAGENT_MODEL
+	unset CLAUDE_CODE_EFFORT_LEVEL
+	unset CLAUDE_CODE_AUTO_COMPACT_WINDOW
+	unset CLAUDE_CODE_MAX_CONTEXT_TOKENS
+	unset ANTHROPIC_BASE_URL
+
+	case "$1" in
+		claude|c)
+			export ANTHROPIC_BASE_URL="https://crs.inhand.online/api"
+			#export ANTHROPIC_AUTH_TOKEN=""
+			export CENV_CURRENT="claude"
+			;;
+		kimi|k)
+
+			#export ANTHROPIC_BASE_URL="https://api.moonshot.cn/anthropic"
+			export ANTHROPIC_BASE_URL="https://api.kimi.com/coding/"
+			export ANTHROPIC_AUTH_TOKEN=""
+			export ANTHROPIC_API_KEY="$ANTHROPIC_AUTH_TOKEN"
+
+			KIMI_MODEL="k3[1m]"
+			KIMI_27_MODEL="kimi-k2.7-code"
+
+			export ANTHROPIC_MODEL=$KIMI_27_MODEL
+			export ANTHROPIC_DEFAULT_FABLE_MODEL=$KIMI_27_MODEL
+			export ANTHROPIC_DEFAULT_OPUS_MODEL=$KIMI_27_MODEL
+			export ANTHROPIC_DEFAULT_SONNET_MODEL=$KIMI_27_MODEL
+			export ANTHROPIC_DEFAULT_HAIKU_MODEL=$KIMI_27_MODEL
+			export CLAUDE_CODE_SUBAGENT_MODEL=$KIMI_27_MODEL
+			export CLAUDE_CODE_EFFORT_LEVEL=max
+			export CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000
+			export CLAUDE_CODE_MAX_CONTEXT_TOKENS=1000000
+
+			export CENV_CURRENT="kimi"
+			;;
+		deepseek|d)
+			export ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic"
+			export ANTHROPIC_AUTH_TOKEN="sk-"
+
+			#DEEPSEEK_MODEL="deepseek-v4-pro[1m]"
+			DEEPSEEK_MODEL="deepseek-v4-flash"
+			DEEPSEEK_FAST_MODEL="deepseek-v4-flash"
+
+			export ANTHROPIC_MODEL=$DEEPSEEK_MODEL
+			export ANTHROPIC_DEFAULT_FABLE_MODEL=$DEEPSEEK_MODEL
+			export ANTHROPIC_DEFAULT_OPUS_MODEL=$DEEPSEEK_MODEL
+			export ANTHROPIC_DEFAULT_SONNET_MODEL=$DEEPSEEK_MODEL
+			export ANTHROPIC_DEFAULT_HAIKU_MODEL=$DEEPSEEK_MODEL
+			export CLAUDE_CODE_SUBAGENT_MODEL=$DEEPSEEK_MODEL
+			export CLAUDE_CODE_EFFORT_LEVEL="max"
+
+			export CENV_CURRENT="deepseek"
+			;;
+		status|s)
+			echo "Backend: $CENV_CURRENT"
+			echo "URL: $ANTHROPIC_BASE_URL"
+			echo "Model: ${ANTHROPIC_MODEL:-default}"
+			;;
+		*)
+			echo "Usage: cenv {c|k|d|status}"
+			;;
+	esac
+}
+
+cenv $1
